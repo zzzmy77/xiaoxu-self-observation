@@ -72,6 +72,33 @@ def create_app():
         _il.import_module('models.analytics')
         db.create_all()
 
+        # Auto-migrate: add missing columns for existing PostgreSQL tables
+        # (db.create_all doesn't ALTER existing tables)
+        try:
+            from sqlalchemy import inspect as _insp, text as _txt
+            _inspector = _insp(db.engine)
+            _users_cols = [c['name'] for c in _inspector.get_columns('users')]
+            _insights_cols = [c['name'] for c in _inspector.get_columns('insights')]
+            _conn = db.engine.connect()
+            _trans = _conn.begin()
+            try:
+                if 'cognitive_model' not in _users_cols:
+                    _conn.execute(_txt("ALTER TABLE users ADD COLUMN cognitive_model TEXT DEFAULT '{}'"))
+                if 'evolution_stages' not in _insights_cols:
+                    _conn.execute(_txt("ALTER TABLE insights ADD COLUMN evolution_stages TEXT DEFAULT '[]'"))
+                if 'hypotheses' not in _insights_cols:
+                    _conn.execute(_txt("ALTER TABLE insights ADD COLUMN hypotheses TEXT DEFAULT '[]'"))
+                if 'triggers' not in _insights_cols:
+                    _conn.execute(_txt("ALTER TABLE insights ADD COLUMN triggers TEXT DEFAULT '[]'"))
+                if 'affected_areas' not in _insights_cols:
+                    _conn.execute(_txt("ALTER TABLE insights ADD COLUMN affected_areas TEXT DEFAULT '[]'"))
+                _trans.commit()
+            except Exception:
+                _trans.rollback()
+            _conn.close()
+        except Exception:
+            pass  # Table may not exist yet (fresh DB)
+
     # Pre-warm vector store synchronously (blocking, not daemon thread)
     # Ensures KnowledgeStore is ready before any request needs L3 search
     if os.getenv("DISABLE_VECTOR", "").lower() not in ("1", "true"):
