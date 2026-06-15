@@ -153,8 +153,10 @@ def _send_message_stream(message, session, user):
 "
         full_response = ""
         struct_meta = None
+        # Reattach session to current DB session (avoids DetachedInstanceError)
+        _fresh_session = Session.query.get(_session_id)
         try:
-            for event_type, data in _orchestrator.process_message_stream(message, session, user):
+            for event_type, data in _orchestrator.process_message_stream(message, _fresh_session, user):
                 if event_type == "text":
                     full_response += data
                 elif event_type == "meta":
@@ -174,7 +176,7 @@ def _send_message_stream(message, session, user):
                     response_text = _re.sub(r'---STR[A-Z]*[\s\S]*?(?:---END|$)', '', response_text).strip()
                     meta = struct_meta if isinstance(struct_meta, dict) else {}
 
-                    session.add_message(
+                    _fresh_session.add_message(
                         role="assistant",
                         content=response_text,
                         structured_meta=meta,
@@ -207,17 +209,17 @@ def _send_message_stream(message, session, user):
             # ── Unified analysis: one LLM call for both Insight (DB) + L2 display (SSE) ──
             if struct_meta and isinstance(struct_meta, dict):
                 stage = struct_meta.get("stage", "")
-                history = session.get_history(limit=None)
+                history = _fresh_session.get_history(limit=None)
                 turn_count = len(history) // 2
                 should_analyze = (
-                    session.mode == "exploring"
+                    _fresh_session.mode == "exploring"
                     and (stage == "closure" or turn_count >= 3)
                 )
                 if should_analyze:
                     try:
                         from agents.unified_analysis import UnifiedAnalysisAgent
                         agent = UnifiedAnalysisAgent()
-                        analysis = agent.analyze(session, user, struct_meta)
+                        analysis = agent.analyze(_fresh_session, user, struct_meta)
                         if analysis and (analysis.get("emotion_summary")
                                          or analysis.get("pattern_match")
                                          or analysis.get("actionable_tip")):
