@@ -1,14 +1,14 @@
+# Production requirements (lightweight, no ML deps)
+# For local development with vector search, also install:
+#   pip install sentence-transformers chromadb
+
 flask>=3.0
 flask-sqlalchemy>=3.0
 flask-migrate>=4.0
 flask-login>=0.6
-flask-cors>=4.0
 python-dotenv>=1.0
 apscheduler>=3.10
 openai>=1.0
 waitress>=3.0
-sentence-transformers>=2.2
-chromadb>=0.4
 sqlalchemy>=2.0
 werkzeug>=3.0
-gunicorn>=21.2
