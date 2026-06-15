@@ -99,6 +99,12 @@ def create_app():
         except Exception:
             pass  # Table may not exist yet (fresh DB)
 
+        # Ensure all existing users have cognitive_model initialized
+        for _u in _il.import_module('models.user').User.query.all():
+            if not _u.cognitive_model or not isinstance(_u.cognitive_model, dict) or not _u.cognitive_model.get('精神发展轨迹'):
+                _u.cognitive_model = _il.import_module('models.user').User.default_cognitive_model()
+        db.session.commit()
+
     # Pre-warm vector store synchronously (blocking, not daemon thread)
     # Ensures KnowledgeStore is ready before any request needs L3 search
     if os.getenv("DISABLE_VECTOR", "").lower() not in ("1", "true"):
