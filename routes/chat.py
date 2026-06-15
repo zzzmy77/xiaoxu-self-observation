@@ -165,9 +165,18 @@ def _send_message_stream(message, session, user):
                 elif event_type == "meta":
                     struct_meta = data  # save meta for post-stream save
                 yield from _sse(event_type, data)
+        except GeneratorExit:
+            pass
         except Exception as e:
-            logger.error("Stream error: %s", e)
-            yield from _sse("error", str(e))
+            err_str = str(e)
+            if "ClientDisconnected" in err_str or "BrokenPipeError" in err_str:
+                pass  # Client disconnected during streaming — normal for SSE
+            else:
+                logger.error("Stream error: %s", e)
+                try:
+                    yield from _sse("error", str(e))
+                except GeneratorExit:
+                    pass
         finally:
             # ── Save assistant message after streaming completes ──
             # The user message is already saved above, so only save assistant.
@@ -230,7 +239,10 @@ def _send_message_stream(message, session, user):
                     except Exception as e:
                         logger.warning("Unified analysis failed: %s", e)
 
-            yield from _sse("done", "")
+            try:
+                yield from _sse("done", "")
+            except GeneratorExit:
+                pass  # Client disconnected
 
     return Response(
         stream_with_context(generate()),
