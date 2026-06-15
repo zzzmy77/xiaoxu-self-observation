@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="diaries-container">
+    <div class="diaries-header">
+        <h2>📖 日记</h2>
+        <p>每次对话自动记录，你也可以编辑</p>
+    </div>
+
+    <!-- Calendar -->
+    <div class="calendar-card">
+        <div class="calendar-nav">
+            <button id="calPrev" class="cal-btn">‹</button>
+            <span id="calTitle" class="cal-title"></span>
+            <button id="calNext" class="cal-btn">›</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid">
+            <div class="cal-day-header">日</div>
+            <div class="cal-day-header">一</div>
+            <div class="cal-day-header">二</div>
+            <div class="cal-day-header">三</div>
+            <div class="cal-day-header">四</div>
+            <div class="cal-day-header">五</div>
+            <div class="cal-day-header">六</div>
+        </div>
+    </div>
+
+    <!-- Selected day detail -->
+    <div class="day-detail" id="dayDetail" style="display:none;">
+        <h3 id="dayDetailTitle"></h3>
+        <div id="dayDiaries"></div>
+        <div id="dayInsights"></div>
+    </div>
+
+    <!-- Diary list -->
+    <!-- Generate today's diary -->
+    <div class="diary-actions">
+        <button id="btnGenerateToday" class="btn-generate">
+            ✨ 生成今天的日记
+        </button>
+        <button id="btnRegenerateToday" class="btn-regenerate" style="display:none;">
+            🔄 重新生成
+        </button>
+        <span id="generateStatus" class="generate-status"></span>
+    </div>
+
+    <div class="diary-list" id="diaryList">
+        <h3>📝 所有日记</h3>
+        {% if diaries %}
+            {% for diary in diaries %}
+            <div class="diary-card" data-id="{{ diary.id }}">
+                <div class="diary-card-header">
+                    <span class="diary-date">{{ diary.date }}</span>
+                    <span class="diary-title">{{ diary.title }}</span>
+                    {% if diary.is_edited %}<span class="edited-badge">已编辑</span>{% endif %}
+                    {% if diary.date == today %}<span class="today-badge">今天</span>{% endif %}
+                </div>
+                <div class="diary-card-body">
+                    {% if diary.narrative %}
+                    <div class="diary-section-content">{{ diary.narrative | safe }}</div>
+                    {% elif diary.content %}
+                        {{ diary.content | safe | truncate(200) }}
+                    {% endif %}
+                </div>
+                <div class="diary-card-footer">
+                    {% for tag in (diary.emotion_tags or [])[:5] %}
+                        <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                    {% if diary.key_events %}
+                        {% for ev in diary.key_events[:2] %}
+                            <span class="tag tag-event">{{ ev | truncate(15) }}</span>
+                        {% endfor %}
+                    {% endif %}
+                    <button class="btn-edit-diary" data-id="{{ diary.id }}">查看</button>
+                    <button class="btn-delete-diary" data-id="{{ diary.id }}">删除</button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state-guide">
+                <h3>📖 还没有日记</h3>
+                <p>每次和小绪聊完，日记会自动生成。<br>你也可以在这里查看、编辑你的每日记录。</p>
+                <a href="{{ url_for('chat.index') }}" class="guide-link">💬 去和小绪聊聊</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Diary editor modal -->
+<div class="modal" id="diaryModal" style="display:none;">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3>编辑日记</h3>
+            <button class="modal-close" id="modalClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="diary-edit-field">
+                <label>标题</label>
+                <input type="text" id="editTitle" class="edit-input">
+            </div>
+            <div class="diary-edit-field">
+                <label>情绪标签</label>
+                <input type="text" id="editTags" class="edit-input" placeholder="逗号分隔">
+            </div>
+            <div class="diary-edit-field">
+                <label>内容</label>
+                <div class="editor-toolbar">
+                    <button class="editor-btn" data-cmd="bold"><b>B</b></button>
+                    <button class="editor-btn" data-cmd="italic"><i>I</i></button>
+                    <button class="editor-btn" data-cmd="underline"><u>U</u></button>
+                    <button class="editor-btn" data-cmd="insertUnorderedList">• 列表</button>
+                    <span class="editor-sep">|</span>
+                    <button class="editor-btn" data-cmd="formatBlock" data-val="p">段落</button>
+                    <button class="editor-btn" data-cmd="formatBlock" data-val="h4">标题</button>
+                </div>
+                <div class="editor-content" id="editContent" contenteditable="true"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" id="editCancel">取消</button>
+            <button class="btn-delete-diary-modal" id="modalDelete">删除此日记</button>
+            <button class="btn-save-diary" id="editSave">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/diary.js') }}"></script>
+{% endblock %}

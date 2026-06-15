@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="chat-container" data-session-id="{{ session.id if session else '' }}">
+    <div class="chat-header">
+        <div class="chat-header-info">
+            <h2>和&nbsp;小绪&nbsp;聊聊</h2>
+            <span class="mode-toggle" id="modeToggle">
+                {{ user.settings.get('mode', 'exploring') == 'exploring' and '🔎 探索模式' or '👂 倾听模式' }}
+            </span>
+        </div>
+        <button class="btn-new" id="newSessionBtn">🔄 新对话</button>
+    </div>
+
+    <div class="messages" id="messageContainer">
+        {% if proactive_msg %}
+        <div class="message message-assistant">
+            <div class="message-avatar">🌱</div>
+            <div class="message-content">
+                <div class="message-text proactive-msg">{{ proactive_msg }}</div>
+            </div>
+        </div>
+        {% endif %}
+        {% if history and history|length >= 1 %}
+        {% for msg in history %}
+            <div class="message {{ 'message-user' if msg.role == 'user' else 'message-assistant' }}" data-created="{{ msg.created_at }}">
+                <div class="message-avatar">{{ '🧑' if msg.role == 'user' else '🌱' }}</div>
+                <div class="message-content">
+                    <div class="message-text">{{ msg.content }}</div>
+                    <div class="message-time"></div>
+                </div>
+            </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="diary-notice" id="diaryNotice" style="display:none;">
+        <span>📖 小绪已为你记录了一段日记</span>
+        <a href="{{ url_for('diaries.index') }}" class="notice-link">去看看 →</a>
+    </div>
+
+    <!-- Perception Panel: 小绪识别面板 -->
+    <div class="perception-panel" id="perceptionPanel" style="display:none;">
+        <div class="perception-header">
+            <span>👁️ 小绪正在观察</span>
+            <span class="perception-toggle-btn" id="perceptionToggle">折叠 ▴</span>
+        </div>
+        <div class="perception-body" id="perceptionBody">
+            <!-- 情绪曲线迷你图 -->
+            <div class="perception-section">
+                <div class="perception-section-label">情绪变化</div>
+                <div class="emotion-curve-container" id="emotionCurveContainer">
+                    <canvas id="emotionCurve" width="600" height="80"></canvas>
+                </div>
+                <div class="emotion-summary" id="emotionSummary"></div>
+            </div>
+
+            <!-- 一句话洞察 -->
+            <div class="perception-section panel-insight-section" id="panelInsightSection" style="display:none;">
+                <div class="panel-insight-text" id="panelInsightText"></div>
+            </div>
+
+            <!-- 当前情绪大卡 -->
+            <div class="perception-section current-emotion-section" id="currentEmotionSection" style="display:none;">
+                <div class="current-emotion-card">
+                    <div class="emotion-emoji" id="emotionEmoji">😐</div>
+                    <div class="emotion-label" id="emotionLabel">—</div>
+                    <div class="emotion-intensity-bar-container">
+                        <div class="emotion-intensity-bar" id="emotionIntensityBar"></div>
+                    </div>
+                    <div class="emotion-intensity-text" id="emotionIntensityText"></div>
+                </div>
+            </div>
+
+            <!-- 关键节点 -->
+            <div class="perception-section" id="keyNodesSection" style="display:none;">
+                <div class="perception-section-label">📌 关键节点</div>
+                <div class="key-nodes-list" id="keyNodesList"></div>
+            </div>
+
+            <!-- 归因卡 -->
+            <div class="perception-section" id="attributionSection" style="display:none;">
+                <div class="perception-section-label">🎯 发现根源</div>
+                <div class="attribution-card" id="attributionCard">
+                    <span class="attribution-icon">🔍</span>
+                    <span class="attribution-text" id="attributionText"></span>
+                </div>
+            </div>
+
+            <!-- 一行强度变化 -->
+            <div class="perception-section" id="intensitySection" style="display:none;">
+                <div class="intensity-row">
+                    <span class="perception-section-label">📊 强度</span>
+                    <span class="intensity-bar" id="intensityBar"></span>
+                    <span class="intensity-change" id="intensityChange"></span>
+                </div>
+            </div>
+
+            <!-- 模式连接 -->
+            <div class="perception-section" id="patternSection" style="display:none;">
+                <div class="pattern-card" id="patternCard">
+                    <span class="pattern-icon">🔗</span>
+                    <span class="pattern-text" id="patternText"></span>
+                </div>
+            </div>
+
+            <!-- 一句建议 -->
+            <div class="perception-section" id="tipSection" style="display:none;">
+                <div class="tip-card" id="tipCard">
+                    <span class="tip-icon">💡</span>
+                    <span class="tip-text" id="tipText"></span>
+                </div>
+            </div>
+
+            <!-- 阶段指示器（紧凑小字） -->
+            <div class="perception-stage-row">
+                <span class="perception-stage-label">阶段</span>
+                <span class="stage-dots" id="stageDots">
+                    <span class="stage-dot" data-stage="empathy">共情</span>
+                    <span class="stage-dot" data-stage="attribution">归因</span>
+                    <span class="stage-dot" data-stage="challenge">挑战</span>
+                    <span class="stage-dot" data-stage="closure">收束</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <div class="input-wrapper">
+            <textarea id="messageInput" rows="1" placeholder="今天想聊聊什么？" autofocus></textarea>
+            <button id="sendBtn" class="btn-send">发送</button>
+        </div>
+        <div class="input-hint">小绪会用对话帮你梳理情绪和想法</div>
+    </div>
+</div>
+
+{% if not history %}
+<div class="empty-chat-guide" id="emptyGuide">
+    <div class="guide-content">
+        <h3>👋 试着跟我说说</h3>
+        <div class="guide-suggestions">
+            <div class="suggestion-chip" data-text="今天心情不太好，想聊聊">😔 今天心情不太好</div>
+            <div class="suggestion-chip" data-text="最近工作压力特别大，感觉快撑不住了">💼 工作压力大</div>
+            <div class="suggestion-chip" data-text="学不进去，好焦虑">📚 学习焦虑</div>
+            <div class="suggestion-chip" data-text="今天发生了一件让我很困惑的事">🤔 困惑的事</div>
+        </div>
+        <p class="guide-hint">点上面任意一句开始，或者自己随便说</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

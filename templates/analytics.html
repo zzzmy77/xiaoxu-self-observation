@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="analytics-container">
+    <div class="analytics-header">
+        <h2>📊 数据看板</h2>
+        <p>埋点数据概览（仅管理员可见）</p>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="stats-grid" id="summaryCards">
+        <div class="stat-item"><span class="stat-value" id="totalEvents">--</span><span class="stat-label">总事件数</span></div>
+        <div class="stat-item"><span class="stat-value" id="causal7d">--</span><span class="stat-label">近7天归因事件</span></div>
+        <div class="stat-item"><span class="stat-value" id="totalUsers">--</span><span class="stat-label">用户数</span></div>
+    </div>
+
+    <!-- Event breakdown -->
+    <div class="chart-card">
+        <h4>事件类型分布</h4>
+        <div id="eventBreakdown" class="analytics-list"></div>
+    </div>
+
+    <!-- Daily trend chart -->
+    <div class="chart-card">
+        <h4>近14天事件趋势</h4>
+        <canvas id="trendChart" height="150"></canvas>
+    </div>
+
+    <!-- Recent events -->
+    <div class="chart-card">
+        <h4>最近事件</h4>
+        <div id="recentEvents" class="analytics-list"></div>
+    </div>
+
+    <!-- A/B Experiments -->
+    <div class="chart-card">
+        <h4>🧪 A/B 实验对比</h4>
+        <div id="experimentSection" class="analytics-list"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    var trendChart = null;
+
+    fetch('/analytics/api/stats')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('totalEvents').textContent = data.total;
+            document.getElementById('causal7d').textContent = data.causal_7d;
+            document.getElementById('totalUsers').textContent = data.total_users;
+
+            // Event breakdown
+            var breakdown = document.getElementById('eventBreakdown');
+            breakdown.innerHTML = '';
+            var entries = Object.entries(data.event_counts);
+            if (entries.length) {
+                var maxCount = Math.max.apply(null, entries.map(function(e) { return e[1]; }));
+                entries.sort(function(a, b) { return b[1] - a[1]; });
+                entries.forEach(function(e) {
+                    var pct = Math.round(e[1] / data.total * 100);
+                    var bar = document.createElement('div');
+                    bar.className = 'analytics-bar-row';
+                    bar.innerHTML = '<span class="bar-label">' + e[0] + '</span>'
+                        + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>'
+                        + '<span class="bar-count">' + e[1] + ' (' + pct + '%)</span>';
+                    breakdown.appendChild(bar);
+                });
+            } else {
+                breakdown.innerHTML = '<p class="empty-state">暂无数据</p>';
+            }
+
+            // Trend chart
+            var canvas = document.getElementById('trendChart');
+            if (canvas && data.daily.labels.length) {
+                if (trendChart) trendChart.destroy();
+                trendChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: data.daily.labels,
+                        datasets: [{
+                            label: '事件数',
+                            data: data.daily.counts,
+                            borderColor: '#A9C0D6',
+                            backgroundColor: 'rgba(169,192,214,0.2)',
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: '#A9C0D6',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                            x: { ticks: { font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            // Recent events
+            var recentDiv = document.getElementById('recentEvents');
+            recentDiv.innerHTML = '';
+            if (data.recent.length) {
+                data.recent.forEach(function(e) {
+                    var row = document.createElement('div');
+                    row.className = 'analytics-row';
+                    row.innerHTML = '<span class="event-time">' + e.time + '</span>'
+                        + '<span class="event-name">' + e.event + '</span>'
+                        + '<span class="event-props">' + JSON.stringify(e.props).slice(0, 60) + '</span>';
+                    recentDiv.appendChild(row);
+                });
+            } else {
+                recentDiv.innerHTML = '<p class="empty-state">暂无数据</p>';
+            }
+        });
+
+    // ── Experiments data ──
+    fetch('/analytics/api/experiments')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var section = document.getElementById('experimentSection');
+            if (!section) return;
+
+            var experiments = data.experiments || [];
+            if (!experiments.length) {
+                section.innerHTML = '<p class="empty-state">暂无实验数据（新用户注册后自动分配实验组）</p>';
+                return;
+            }
+
+            section.innerHTML = '';
+            experiments.forEach(function(exp) {
+                var card = document.createElement('div');
+                card.className = 'experiment-card';
+                card.style.cssText = 'padding:12px 0; border-bottom:1px solid #F0EAE4;';
+
+                var title = document.createElement('div');
+                title.style.cssText = 'font-size:14px; font-weight:600; margin-bottom:8px;';
+                title.textContent = exp.name + (exp.description ? ' — ' + exp.description : '');
+                card.appendChild(title);
+
+                var groups = Object.entries(exp.groups || {});
+                var maxCount = Math.max.apply(null, groups.map(function(g) { return g[1].user_count || 0; }));
+
+                groups.forEach(function(g) {
+                    var row = document.createElement('div');
+                    row.style.cssText = 'display:flex; align-items:center; gap:8px; margin:4px 0; font-size:13px;';
+
+                    var label = document.createElement('span');
+                    label.style.cssText = 'min-width:80px; color:#777;';
+                    label.textContent = g[0];
+
+                    var bar = document.createElement('div');
+                    bar.style.cssText = 'flex:1; height:20px; background:#F0EAE4; border-radius:4px; overflow:hidden;';
+                    var fill = document.createElement('div');
+                    fill.style.cssText = 'height:100%; width:' + (maxCount > 0 ? Math.round(g[1].user_count / maxCount * 100) : 0) + '%; background:#A9C0D6; border-radius:4px; transition:width 0.3s;';
+                    bar.appendChild(fill);
+
+                    var count = document.createElement('span');
+                    count.style.cssText = 'min-width:30px; text-align:right;';
+                    count.textContent = g[1].user_count + '人';
+
+                    row.appendChild(label);
+                    row.appendChild(bar);
+                    row.appendChild(count);
+                    card.appendChild(row);
+                });
+
+                section.appendChild(card);
+            });
+        });
+})();
+</script>
+{% endblock %}

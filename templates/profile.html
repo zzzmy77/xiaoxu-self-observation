@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <h2>👤 我的</h2>
+    </div>
+
+    <!-- Identity Card (new — optional, helps AI tailor responses) -->
+    <div class="profile-card">
+        <h3>📋 我的背景 <span class="optional-tag">非必填，填了对话会更贴切</span></h3>
+        <div class="profile-field">
+            <label>身份</label>
+            <select id="identitySelect">
+                <option value="">-- 不填 --</option>
+                {% for opt in identity_options.get('identity', []) %}
+                    {% if opt %}
+                        <option value="{{ opt }}" {{ 'selected' if user.profile.get('identity') == opt else '' }}>{{ opt }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <div class="profile-field">
+            <label>状态</label>
+            <select id="statusSelect">
+                <option value="">-- 不填 --</option>
+                {% for opt in identity_options.get('status', []) %}
+                    {% if opt %}
+                        <option value="{{ opt }}" {{ 'selected' if user.profile.get('status') == opt else '' }}>{{ opt }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <div class="profile-field">
+            <label>行业</label>
+            <input type="text" id="industryInput" value="{{ user.profile.get('industry', '') }}" placeholder="例：互联网/教育/金融…">
+        </div>
+        <div class="profile-field">
+            <label>专业/岗位</label>
+            <input type="text" id="professionInput" value="{{ user.profile.get('profession', '') }}" placeholder="例：后端开发/产品经理/考研中…">
+        </div>
+        <div class="profile-field">
+            <label>用户名</label>
+            <input type="text" id="usernameInput" value="{{ user.username }}">
+        </div>
+        <button class="btn-save" id="saveProfileBtn">保存背景信息</button>
+    </div>
+
+    <!-- Mode Card -->
+    <div class="profile-card">
+        <h3>⚙️ 对话设置</h3>
+        <div class="profile-field">
+            <label>对话模式</label>
+            <select id="modeSelect">
+                <option value="exploring" {{ 'selected' if user.settings.get('mode') == 'exploring' else '' }}>🔎 探索模式（引导+归因+洞察）</option>
+                <option value="listening" {{ 'selected' if user.settings.get('mode') == 'listening' else '' }}>👂 倾听模式（陪伴+不主动追问）</option>
+            </select>
+        </div>
+        <button class="btn-save" id="saveModeBtn">保存设置</button>
+    </div>
+
+    <!-- Stats Card -->
+    <div class="profile-card">
+        <h3>📊 成长数据</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-value" id="sessionCount">{{ user.profile.get('total_sessions', 0) }}</span>
+                <span class="stat-label">对话次数</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="emotionCount">--</span>
+                <span class="stat-label">情绪标记</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="insightCount">{{ user.profile.get('total_sessions', 0) // 2 }}</span>
+                <span class="stat-label">洞察数量</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emotion Cloud -->
+    <div class="profile-card">
+        <h3>🎯 常见情绪</h3>
+        <div id="emotionCloud" class="emotion-cloud">
+            对话足够多后，这里会展示你的情绪词云
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    function saveProfile() {
+        var data = {
+            username: document.getElementById('usernameInput').value,
+            identity: document.getElementById('identitySelect').value,
+            status: document.getElementById('statusSelect').value,
+            industry: document.getElementById('industryInput').value,
+            profession: document.getElementById('professionInput').value,
+        };
+        fetch('/profile/api/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            alert('背景信息已保存');
+        });
+    }
+
+    function saveMode() {
+        var data = {
+            mode: document.getElementById('modeSelect').value,
+        };
+        fetch('/profile/api/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            alert('对话模式已保存');
+        });
+    }
+
+    document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
+    document.getElementById('saveModeBtn').addEventListener('click', saveMode);
+
+    // Load emotion cloud from insight API
+    fetch('/insights/api/data')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var emotions = data.emotion_frequencies;
+            var container = document.getElementById('emotionCloud');
+            if (!container) return;
+            var keys = Object.keys(emotions);
+            if (keys.length === 0) {
+                container.innerHTML = '对话足够多后，这里会展示你的情绪词云';
+                return;
+            }
+            container.innerHTML = '';
+            keys.sort(function(a, b) { return emotions[b] - emotions[a]; });
+            keys.forEach(function(k) {
+                var span = document.createElement('span');
+                span.className = 'tag';
+                var size = Math.min(28, Math.max(12, 10 + emotions[k] * 4));
+                span.style.fontSize = size + 'px';
+                span.textContent = k + '(' + emotions[k] + ')';
+                container.appendChild(span);
+            });
+
+            // Update emotion count stat
+            var ec = document.getElementById('emotionCount');
+            if (ec) ec.textContent = data.total_emotions || 0;
+        });
+})();
+</script>
+{% endblock %}

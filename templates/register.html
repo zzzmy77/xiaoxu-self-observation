@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 · 小绪 · 自我观察日记</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #F9D8C6 0%, #A9C0D6 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        .auth-container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .auth-logo h1 { font-size: 28px; margin-bottom: 4px; }
+        .auth-logo p { font-size: 13px; color: #777; }
+        .flash-messages { margin-bottom: 16px; }
+        .flash-error {
+            background: #F8D7DA; color: #721C24;
+            padding: 8px 12px; border-radius: 8px;
+            font-size: 13px; margin-bottom: 4px;
+        }
+        .flash-success {
+            background: #D4EDDA; color: #155724;
+            padding: 8px 12px; border-radius: 8px;
+            font-size: 13px; margin-bottom: 4px;
+        }
+        .auth-field {
+            margin-bottom: 14px;
+        }
+        .auth-field label {
+            display: block;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        .auth-field input, .auth-field select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #D0C8C0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+            background: white;
+        }
+        .auth-field input:focus, .auth-field select:focus {
+            border-color: #A9C0D6;
+            box-shadow: 0 0 0 2px rgba(169,192,214,0.3);
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 10px;
+            background: #2C2C3C;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .auth-btn:hover { background: #3D3D52; }
+        .auth-links {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+        .auth-links a { color: #5B8DB8; text-decoration: none; }
+        .auth-links a:hover { text-decoration: underline; }
+        .field-hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-logo">
+            <h1>☀️ 小绪</h1>
+            <p>注册后对话会自动保存</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                <div class="flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="post">
+            <div class="auth-field">
+                <label>用户名 *</label>
+                <input type="text" name="username" required autofocus
+                       value="{{ form_data.username if form_data else '' }}"
+                       placeholder="至少2个字符">
+            </div>
+            <div class="auth-field">
+                <label>密码 *</label>
+                <input type="password" name="password" required placeholder="至少6位">
+            </div>
+
+            <div class="auth-field" style="margin-top: 24px;">
+                <label style="color:#999; font-size:12px;">以下可选，填了对话会更贴切</label>
+            </div>
+
+            <div class="auth-field">
+                <label>身份</label>
+                <select name="identity">
+                    <option value="">-- 不填 --</option>
+                    {% for opt in identity_options.get('identity', []) %}
+                        {% if opt %}
+                        <option value="{{ opt }}">{{ opt }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="auth-field">
+                <label>状态</label>
+                <select name="status">
+                    <option value="">-- 不填 --</option>
+                    {% for opt in identity_options.get('status', []) %}
+                        {% if opt %}
+                        <option value="{{ opt }}">{{ opt }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="auth-field">
+                <label>行业</label>
+                <input type="text" name="industry" placeholder="例：互联网 / 教育 / 金融">
+            </div>
+            <div class="auth-field">
+                <label>专业 / 岗位</label>
+                <input type="text" name="profession" placeholder="例：后端开发 / 产品经理 / 考研中">
+            </div>
+
+            <button type="submit" class="auth-btn">注册并开始使用</button>
+        </form>
+
+        <div class="auth-links">
+            已有账号？<a href="{{ url_for('auth.login') }}">登录</a>
+        </div>
+    </div>
+</body>
+</html>

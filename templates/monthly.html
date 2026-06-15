@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="monthly-container">
+    <div class="monthly-header">
+        <h2>📊 成长周期总结</h2>
+        <p>每30天自动生成一份周期报告，回顾你的情绪和成长</p>
+    </div>
+
+    <div class="month-selector">
+        <select id="periodSelect" class="month-select">
+        </select>
+    </div>
+
+    <div class="monthly-summary-card" id="summaryCard">
+        <div class="loading">加载周期总结...</div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h4>情绪分布</h4>
+            <canvas id="emotionChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+            <h4>归因分布</h4>
+            <canvas id="attributionChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-card full-width">
+        <h4>成长轨迹</h4>
+        <canvas id="growthChart" height="150"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/monthly.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2C2C3C">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>小绪 · 自我观察日记</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/diary.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Mobile top bar -->
+        <div class="mobile-topbar" id="mobileTopbar">
+            <button class="hamburger" id="hamburgerBtn" aria-label="菜单">☰</button>
+            <span class="mobile-title">小绪</span>
+            <span class="mobile-spacer"></span>
+        </div>
+        <!-- Overlay for mobile sidebar -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">☀️ 小绪</h1>
+                <p class="tagline">一面有记忆的镜子</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('chat.index') }}" class="nav-item{% if request.path.startswith('/chat') %} active{% endif %}">
+                    <span class="nav-icon">💬</span> 对话
+                </a>
+                <a href="{{ url_for('insights.index') }}" class="nav-item{% if request.path.startswith('/insights') %} active{% endif %}">
+                    <span class="nav-icon">🔍</span> 洞察
+                </a>
+                <a href="{{ url_for('diaries.index') }}" class="nav-item{% if request.path.startswith('/diaries') %} active{% endif %}">
+                    <span class="nav-icon">📖</span> 日记
+                </a>
+                <a href="{{ url_for('monthly.index') }}" class="nav-item{% if request.path.startswith('/monthly') %} active{% endif %}">
+                    <span class="nav-icon">📊</span> 月报
+                </a>
+                <a href="{{ url_for('profile.index') }}" class="nav-item{% if request.path.startswith('/profile') %} active{% endif %}">
+                    <span class="nav-icon">👤</span> 我的
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <span class="mode-badge" id="modeBadge">
+                    {{ user.settings.get('mode', 'exploring') == 'exploring' and '🔎 探索模式' or '👂 倾听模式' }}
+                </span>
+                <button id="installPwaBtn" class="install-pwa-btn" style="display:none; margin-top: 8px;">
+                    📲 安装到桌面
+                </button>
+                {% if current_user.is_authenticated %}
+                <div style="margin-top: 8px; display: flex; gap: 6px; align-items: center;">
+                    <span style="font-size: 11px; opacity: 0.7;">{{ current_user.username }}</span>
+                    <a href="{{ url_for('auth.logout') }}" id="logoutBtn"
+                       style="font-size: 11px; color: #E8B8A0; text-decoration: none;">退出</a>
+                </div>
+                {% endif %}
+            </div>
+        </aside>
+
+        <!-- Main content area -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+    <script>
+    // Check auth on every page — if API returns 401, redirect to login
+    document.addEventListener('click', function(e) {
+        var logoutBtn = e.target.closest('#logoutBtn');
+        if (logoutBtn) {
+            if (!confirm('确定退出？')) e.preventDefault();
+        }
+    });
+
+    // ── Hamburger menu toggle ──
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    var hamburger = document.getElementById('hamburgerBtn');
+    if (hamburger && sidebar && overlay) {
+        hamburger.addEventListener('click', function() {
+            sidebar.classList.toggle('sidebar-open');
+            overlay.classList.toggle('sidebar-overlay-visible');
+        });
+        overlay.addEventListener('click', function() {
+            sidebar.classList.remove('sidebar-open');
+            overlay.classList.remove('sidebar-overlay-visible');
+        });
+        // Close sidebar when navigating (on mobile)
+        sidebar.querySelectorAll('.nav-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 640) {
+                    sidebar.classList.remove('sidebar-open');
+                    overlay.classList.remove('sidebar-overlay-visible');
+                }
+            });
+        });
+    }
+
+    // ── Register Service Worker for PWA ──
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}')
+            .then(function() { console.log('SW registered'); })
+            .catch(function(e) { console.log('SW reg failed:', e); });
+    }
+
+    // ── PWA Install Button ──
+    var installPrompt = null;
+    var installBtn = document.getElementById('installPwaBtn');
+
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        installPrompt = e;
+        if (installBtn) installBtn.style.display = 'block';
+    });
+
+    if (installBtn) {
+        installBtn.addEventListener('click', function() {
+            if (!installPrompt) return;
+            installPrompt.prompt();
+            installPrompt.userChoice.then(function(result) {
+                if (result.outcome === 'accepted') {
+                    installBtn.style.display = 'none';
+                }
+                installPrompt = null;
+            });
+        });
+    }
+
+    // Has been installed already
+    window.addEventListener('appinstalled', function() {
+        if (installBtn) installBtn.style.display = 'none';
+        installPrompt = null;
+    });
+    </script>
+</body>
+</html>
