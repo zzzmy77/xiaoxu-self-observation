@@ -62,10 +62,14 @@ def create_app():
     login_manager.init_app(app)
 
     with app.app_context():
-        from models import (  # noqa: F401
-            User, Session, Message, Insight,
-            Diary, MonthlySummary, AnalyticsEvent,
-        )
+        import importlib as _il
+        _il.import_module('models.user')
+        _il.import_module('models.session')
+        _il.import_module('models.message')
+        _il.import_module('models.insight')
+        _il.import_module('models.diary')
+        _il.import_module('models.monthly_summary')
+        _il.import_module('models.analytics')
         db.create_all()
 
     # Pre-warm vector store synchronously (blocking, not daemon thread)
@@ -225,13 +229,6 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=debug)
 
 
-# Lazy application for production (resolves on first request, not at import time)
+# Application for production (created at module load time)
 #   waitress-serve --port=$PORT app:application
-class _LazyWSGI:
-    _app = None
-    def __call__(self, environ, start_response):
-        if _LazyWSGI._app is None:
-            _LazyWSGI._app = create_app().wsgi_app
-        return _LazyWSGI._app(environ, start_response)
-
-application = _LazyWSGI()
+application = create_app()
