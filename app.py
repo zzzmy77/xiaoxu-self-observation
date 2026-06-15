@@ -225,5 +225,13 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=debug)
 
 
-# Production deployment: use wsgi.py
-#   waitress-serve --port=$PORT wsgi:application
+# Lazy application for production (resolves on first request, not at import time)
+#   waitress-serve --port=$PORT app:application
+class _LazyWSGI:
+    _app = None
+    def __call__(self, environ, start_response):
+        if self._LazyWSGI._app is None:
+            self._LazyWSGI._app = create_app().wsgi_app
+        return self._LazyWSGI._app(environ, start_response)
+
+application = _LazyWSGI()
