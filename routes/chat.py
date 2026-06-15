@@ -153,10 +153,12 @@ def _send_message_stream(message, session, user):
 "
         full_response = ""
         struct_meta = None
-        # Reattach session to current DB session (avoids DetachedInstanceError)
+        # Reattach session+user to current DB session (avoids DetachedInstanceError)
         _fresh_session = Session.query.get(_session_id)
+        from models.user import User as _User
+        _fresh_user = _User.query.get(user.id)
         try:
-            for event_type, data in _orchestrator.process_message_stream(message, _fresh_session, user):
+            for event_type, data in _orchestrator.process_message_stream(message, _fresh_session, _fresh_user):
                 if event_type == "text":
                     full_response += data
                 elif event_type == "meta":
@@ -183,16 +185,16 @@ def _send_message_stream(message, session, user):
                     )
 
                     # Update user profile
-                    profile = user.profile or {}
+                    profile = _fresh_user.profile or {}
                     emotion_freq = profile.get("emotion_frequencies", {})
                     for tag in (meta.get("emotion_tags") or []):
                         emotion_freq[tag] = emotion_freq.get(tag, 0) + 1
                     profile["emotion_frequencies"] = emotion_freq
-                    user.profile = profile
+                    _fresh_user.profile = profile
 
                     # Track ai_reply analytics
                     db.session.add(AnalyticsEvent(
-                        user_id=user.id, session_id=_session_id,
+                        user_id=_fresh_user.id, session_id=_session_id,
                         event_name="ai_reply",
                         properties={
                             "emotion_count": len(meta.get("emotion_tags", [])),
