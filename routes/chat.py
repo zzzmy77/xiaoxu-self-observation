@@ -121,9 +121,10 @@ def _send_message_stream(message, session, user):
     #   - the LLM stream fails mid-way
     #   - the user refreshes the page before streaming completes
     #   - the network connection drops
-    # Save session.id before commit to avoid DetachedInstanceError
+    # Save ids before commit to avoid DetachedInstanceError
     _session_id = session.id
     _session_mode = session.mode
+    _user_id = user.id
     
     user_msg = session.add_message(role="user", content=message)
     db.session.commit()
@@ -156,7 +157,7 @@ def _send_message_stream(message, session, user):
         # Reattach session+user to current DB session (avoids DetachedInstanceError)
         _fresh_session = Session.query.get(_session_id)
         from models.user import User as _User
-        _fresh_user = _User.query.get(user.id)
+        _fresh_user = _User.query.get(_user_id)
         try:
             for event_type, data in _orchestrator.process_message_stream(message, _fresh_session, _fresh_user):
                 if event_type == "text":
