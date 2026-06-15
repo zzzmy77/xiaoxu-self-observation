@@ -19,15 +19,33 @@ class User(UserMixin, db.Model):
     cognitive_model = db.Column(db.JSON, default=dict, nullable=False)
     experiments = db.Column(db.JSON, default=dict, nullable=False)
 
-    @db.validates('cognitive_model')
-    def _validate_cognitive_model(self, key, value):
-        if isinstance(value, str):
+    @db.reconstructor
+    def _reconstruct_cognitive_model(self):
+        """Auto-parse cognitive_model from JSON string to dict on DB load."""
+        val = self._cognitive_model_raw
+        if isinstance(val, str):
             import json as _j
             try:
-                return _j.loads(value)
+                self._cognitive_model_raw = _j.loads(val)
+            except Exception:
+                self._cognitive_model_raw = {}
+
+    _cognitive_model_raw = db.Column('cognitive_model', db.JSON, default=dict, nullable=False)
+
+    @property
+    def cognitive_model(self):
+        val = self._cognitive_model_raw
+        if isinstance(val, str):
+            import json as _j
+            try:
+                return _j.loads(val)
             except Exception:
                 return {}
-        return value or {}
+        return val or {}
+
+    @cognitive_model.setter
+    def cognitive_model(self, value):
+        self._cognitive_model_raw = value
 
     sessions = db.relationship("Session", backref="user", lazy="dynamic", cascade="all, delete-orphan")
     insights = db.relationship("Insight", backref="user", lazy="dynamic", cascade="all, delete-orphan")
