@@ -121,15 +121,19 @@ def _send_message_stream(message, session, user):
     #   - the LLM stream fails mid-way
     #   - the user refreshes the page before streaming completes
     #   - the network connection drops
+    # Save session.id before commit to avoid DetachedInstanceError
+    _session_id = session.id
+    _session_mode = session.mode
+    
     user_msg = session.add_message(role="user", content=message)
     db.session.commit()
 
     # Track analytics for user message
     from models.analytics import AnalyticsEvent
     db.session.add(AnalyticsEvent(
-        user_id=user.id, session_id=session.id,
+        user_id=user.id, session_id=_session_id,
         event_name="send_message",
-        properties={"length": len(message), "mode": session.mode},
+        properties={"length": len(message), "mode": _session_mode},
     ))
     db.session.commit()
 
@@ -144,7 +148,7 @@ def _send_message_stream(message, session, user):
 
     def generate():
         # Send session_id first so frontend can use it for analysis
-        yield f"data: {json.dumps({'type': 'session_id', 'content': session.id}, ensure_ascii=False)}\
+        yield f"data: {json.dumps({'type': 'session_id', 'content': _session_id}, ensure_ascii=False)}\
 \
 "
         full_response = ""
@@ -186,7 +190,7 @@ def _send_message_stream(message, session, user):
 
                     # Track ai_reply analytics
                     db.session.add(AnalyticsEvent(
-                        user_id=user.id, session_id=session.id,
+                        user_id=user.id, session_id=_session_id,
                         event_name="ai_reply",
                         properties={
                             "emotion_count": len(meta.get("emotion_tags", [])),
