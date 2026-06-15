@@ -230,8 +230,8 @@ if __name__ == "__main__":
 class _LazyWSGI:
     _app = None
     def __call__(self, environ, start_response):
-        if self._LazyWSGI._app is None:
-            self._LazyWSGI._app = create_app().wsgi_app
-        return self._LazyWSGI._app(environ, start_response)
+        if _LazyWSGI._app is None:
+            _LazyWSGI._app = create_app().wsgi_app
+        return _LazyWSGI._app(environ, start_response)
 
 application = _LazyWSGI()
