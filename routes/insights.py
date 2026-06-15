@@ -29,10 +29,8 @@ def insight_data():
     New fields: core_beliefs, patterns (with evolution), relationships, traits.
     Existing fields preserved for frontend compatibility.
     """
-    import json as _json
     user = current_user
-    _raw_cm = user.cognitive_model or {}
-    cm = _json.loads(_raw_cm) if isinstance(_raw_cm, str) else (_raw_cm or {})
+    cm = user.cognitive_model or {}
 
     # ── Gather raw message data (kept for attributions and backward compat) ──
     sessions = Session.query.filter_by(user_id=user.id).all()

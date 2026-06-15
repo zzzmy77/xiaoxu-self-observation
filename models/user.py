@@ -19,6 +19,16 @@ class User(UserMixin, db.Model):
     cognitive_model = db.Column(db.JSON, default=dict, nullable=False)
     experiments = db.Column(db.JSON, default=dict, nullable=False)
 
+    @db.validates('cognitive_model')
+    def _validate_cognitive_model(self, key, value):
+        if isinstance(value, str):
+            import json as _j
+            try:
+                return _j.loads(value)
+            except Exception:
+                return {}
+        return value or {}
+
     sessions = db.relationship("Session", backref="user", lazy="dynamic", cascade="all, delete-orphan")
     insights = db.relationship("Insight", backref="user", lazy="dynamic", cascade="all, delete-orphan")
 
