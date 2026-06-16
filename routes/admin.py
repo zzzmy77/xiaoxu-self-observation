@@ -254,6 +254,105 @@ def seed_test_data():
     user.profile = profile
     db.session.commit()
 
+    # ── 填充人物认知模型（10维度，供洞察页展示）──
+    user.cognitive_model = {
+        "基础信息": {
+            "occupation": "互联网/技术相关",
+            "living_situation": "城市独居",
+        },
+        "成长背景": {
+            "impact_assessment": (
+                "用户从小习惯了用外部标准评判自己，"
+                "可能和成长过程中对'优秀才能被认可'的内化有关。"
+                "但在积极自我觉察中，正在学习从外部标准转向内在体验。"
+            ),
+        },
+        "人生经历时间线": [
+            {"date": "0601", "event": "开始使用小绪进行自我观察", "type": "自我成长", "feeling": "期待"},
+            {"date": "0608", "event": "意识到'害怕被评判'是核心模式", "type": "觉察突破", "feeling": "恍然大悟"},
+            {"date": "0615", "event": "尝试用健身和美食调节情绪，不再只聚焦一个目标", "type": "行为改变", "feeling": "主动、有力量"},
+        ],
+        "核心关系网络": {
+            "母亲": {
+                "role": "母亲", "current_status": "关系疏远但开始反思",
+                "emotional_charge": "内疚与距离感并存",
+                "evolution": [{"date": "0610", "observation": "用户开始思考自己和母亲的关系模式"}],
+            },
+        },
+        "精神发展轨迹": {
+            "core_beliefs": [
+                {
+                    "belief": "害怕被评判 → 先评判自己",
+                    "status": "正在松动",
+                    "first_noticed": "0603",
+                    "root_hypothesis": "从小习惯了用外部标准来衡量自我价值",
+                    "confidence": 0.75,
+                    "milestones": [
+                        {"date": "0603", "milestone": "识别模式", "quote": "我害怕被外界评判，所以先不断评判自己"},
+                        {"date": "0608", "milestone": "关联到不同场景", "quote": "滑雪时没有评判所以快乐，编程时有评判所以痛苦"},
+                        {"date": "0615", "milestone": "松动", "quote": "我不那么在意了，开始找到自己的节奏"},
+                    ],
+                    "triggers": ["被比较", "被批评", "外部评价"],
+                    "related_patterns": ["自我评判"],
+                },
+                {
+                    "belief": "焦虑来自比较",
+                    "status": "正在溯源",
+                    "first_noticed": "0601",
+                    "root_hypothesis": "习惯用和他人对比来确认自己的位置",
+                    "confidence": 0.6,
+                    "milestones": [
+                        {"date": "0601", "milestone": "初始发现", "quote": "别人都比我进度快"},
+                        {"date": "0605", "milestone": "深化", "quote": "我的焦虑来自比较，而不是学习本身"},
+                    ],
+                    "triggers": ["看到别人进展", "社交动态"],
+                    "related_patterns": ["比较焦虑"],
+                },
+            ],
+            "self_awareness_evolution": {
+                "level": "growing",
+                "indicators": ["开始使用分析性语言描述自己", "能跨场景关联同一个模式", "从被动接受到主动调节"],
+            },
+        },
+        "情绪与心理健康趋势": {
+            "recent_trend": {
+                "dominant_emotions": [e + "×" + str(c) for e, c in sorted(
+                    emotion_freq.items(), key=lambda x: -x[1]
+                )[:6]],
+            },
+        },
+        "当前生活状态": {
+            "challenges": ["职业方向还在摸索", "容易陷入自我评判", "需要找到工作和生活的平衡"],
+            "strengths": ["有强烈的自我反思意愿", "愿意尝试新的生活方式", "主动寻找改变的方法"],
+        },
+        "人格行为与认知特征": {
+            "behavioral": [
+                {"trait": "高反思性", "evidence": "主动分析自己的行为模式和行为背后的原因", "stability": "stable"},
+                {"trait": "追求自我成长", "evidence": "使用自我观察工具、主动寻求改变", "stability": "stable"},
+                {"trait": "倾向于自我评判", "evidence": "习惯用外部标准衡量自己", "stability": "changing"},
+            ],
+            "cognitive": [
+                {"pattern": "灾难化预期", "evidence": "常把小事想成'如果...就完了'", "stability": "observed"},
+                {"pattern": "对比思维", "evidence": "习惯和他人比较进度", "stability": "changing"},
+                {"pattern": "高反思性（积极）", "evidence": "对AI的反馈深入思考，能举一反三", "stability": "stable"},
+            ],
+        },
+        "价值观与深层需求": {
+            "values": ["被真实地理解", "成为真实的自己（不再讨好）", "精神独立"],
+            "deep_needs": [
+                {"need": "无条件的接纳", "expression": "希望有人不因为我做了什么而喜欢我"},
+                {"need": "自我价值感", "expression": "不需要靠外部认可来确认自己有价值"},
+            ],
+        },
+        "兴趣与关注": {
+            "interests": ["自我成长", "心理学", "职业发展"],
+            "recent_focus": "理解自己的评判模式，学会用内在标准替代外部标准",
+        },
+    }
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(user, 'cognitive_model')
+    db.session.commit()
+
     # 统计
     stats_sessions = Session.query.filter_by(user_id=user.id).count()
     stats_msgs = Message.query.join(Session).filter(Session.user_id == user.id).count()
