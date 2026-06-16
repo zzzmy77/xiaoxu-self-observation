@@ -1,4 +1,5 @@
 """Insights routes — cross-session analysis."""
+import json
 from flask import Blueprint, render_template, jsonify
 from flask_login import current_user, login_required
 from collections import Counter
@@ -382,6 +383,7 @@ def _generate_warm_message_llm(user, emotion_freq: dict, discoveries: list) -> s
 
 def _generate_pivot_point_llm(user, beliefs: list, discoveries: list) -> str:
     """调 LLM 生成转变支点。"""
+    import json
     from config import Config
     if not Config.llm_available():
         return ""
