@@ -1,6 +1,7 @@
 """Analytics routes — internal only, no UI."""
 import sys, os
 from flask import Blueprint, jsonify, request
+from flask_login import login_required, current_user
 
 from models.analytics import AnalyticsEvent
 from models.user import User
@@ -46,6 +47,14 @@ def stats():
         "total_events": AnalyticsEvent.query.count(),
         "total_users": User.query.count(),
     })
+
+
+@admin_bp.route("/seed-tool")
+@login_required
+def seed_tool():
+    """测试数据工具页面。"""
+    from flask import render_template
+    return render_template("seed_tool.html", user=current_user)
 
 
 @admin_bp.route("/seed", methods=["POST"])

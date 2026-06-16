@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="seed-tool-container">
+    <div class="seed-tool-header">
+        <h2>🧪 测试数据工具</h2>
+        <p class="seed-tool-desc">为 <strong>demo</strong> 用户生成不同等级的测试数据，刷新页面后即可在洞察/日记/月度看到变化。</p>
+    </div>
+
+    <div class="seed-levels">
+        <div class="seed-card" data-level="new">
+            <div class="seed-card-icon">🌱</div>
+            <div class="seed-card-title">新用户</div>
+            <div class="seed-card-desc">0-4 轮对话，纯 DeepSeek V4 + system prompt</div>
+            <div class="seed-card-stats">
+                <span>~4 条消息</span>
+                <span>0 洞察</span>
+            </div>
+            <button class="btn-seed" data-level="new">生成</button>
+        </div>
+
+        <div class="seed-card" data-level="light">
+            <div class="seed-card-icon">🌿</div>
+            <div class="seed-card-title">轻度用户</div>
+            <div class="seed-card-desc">5-15 轮，有身份+情绪趋势</div>
+            <div class="seed-card-stats">
+                <span>~20 条消息</span>
+                <span>~2 洞察</span>
+            </div>
+            <button class="btn-seed" data-level="light">生成</button>
+        </div>
+
+        <div class="seed-card" data-level="medium">
+            <div class="seed-card-icon">🌳</div>
+            <div class="seed-card-title">中度用户</div>
+            <div class="seed-card-desc">15-50 轮，有日记+模式+跨会话</div>
+            <div class="seed-card-stats">
+                <span>~60 条消息</span>
+                <span>~5 洞察</span>
+            </div>
+            <button class="btn-seed" data-level="medium">生成</button>
+        </div>
+    </div>
+
+    <div id="progressArea" style="display:none;">
+        <div class="seed-progress">
+            <div class="seed-progress-bar" id="progressBar"></div>
+            <span class="seed-progress-text" id="progressText">生成中...</span>
+        </div>
+    </div>
+
+    <div id="resultArea" style="display:none;">
+        <div class="seed-result-header">
+            <span class="seed-result-icon" id="resultIcon">✅</span>
+            <span class="seed-result-title" id="resultTitle">数据已生成</span>
+        </div>
+        <div class="seed-result-stats" id="resultStats"></div>
+        <div class="seed-result-actions">
+            <a href="/chat/" class="btn-action">💬 去聊天看看</a>
+            <a href="/insights/" class="btn-action">📊 去洞察看看</a>
+            <a href="/diaries/" class="btn-action">📖 去日记看看</a>
+        </div>
+    </div>
+
+    <div class="seed-quick-tests">
+        <h3>⚡ 快速验证</h3>
+        <p class="seed-tool-desc">生成数据后，点击下面按钮跑一次对话验证。</p>
+        <button class="btn-test" id="btnTestMessage">💬 发条消息测试</button>
+        <button class="btn-test" id="btnTestStory">🎭 跑剧本 S001（滑雪 vs 编程）</button>
+    </div>
+
+    <div class="test-log" id="testLog" style="display:none;">
+        <div class="test-log-header">
+            <span>📋 测试日志</span>
+            <button class="btn-clear-log" id="btnClearLog">清空</button>
+        </div>
+        <div class="test-log-body" id="testLogBody"></div>
+    </div>
+</div>
+
+<style>
+.seed-tool-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 16px;
+}
+.seed-tool-header h2 {
+    margin: 0 0 8px 0;
+    font-size: 1.4em;
+}
+.seed-tool-desc {
+    color: #666;
+    font-size: 0.9em;
+    margin: 0 0 24px 0;
+}
+.seed-levels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.seed-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.2s;
+}
+.seed-card:hover {
+    border-color: #5B8DB8;
+    box-shadow: 0 2px 12px rgba(91,141,184,0.15);
+}
+.seed-card-icon {
+    font-size: 2em;
+    margin-bottom: 8px;
+}
+.seed-card-title {
+    font-weight: 600;
+    font-size: 1.1em;
+    margin-bottom: 4px;
+}
+.seed-card-desc {
+    font-size: 0.85em;
+    color: #888;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+.seed-card-stats {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    font-size: 0.8em;
+    color: #999;
+    margin-bottom: 16px;
+}
+.btn-seed {
+    background: #5B8DB8;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 24px;
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: background 0.2s;
+}
+.btn-seed:hover { background: #4A7A9E; }
+.btn-seed:disabled { background: #ccc; cursor: not-allowed; }
+
+.seed-progress {
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.seed-progress-bar {
+    height: 6px;
+    background: #5B8DB8;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.5s;
+    margin-bottom: 8px;
+}
+.seed-progress-text {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.seed-result-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.seed-result-icon { font-size: 1.5em; }
+.seed-result-title { font-weight: 600; font-size: 1.1em; }
+.seed-result-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.seed-result-stats .stat-item {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 8px 16px;
+    text-align: center;
+}
+.seed-result-stats .stat-value {
+    font-size: 1.3em;
+    font-weight: 600;
+    color: #5B8DB8;
+}
+.seed-result-stats .stat-label {
+    font-size: 0.8em;
+    color: #888;
+}
+.seed-result-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.btn-action {
+    background: #f0f4f8;
+    color: #333;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    transition: background 0.2s;
+}
+.btn-action:hover { background: #e0e8f0; }
+
+.seed-quick-tests {
+    margin: 32px 0 16px;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+}
+.seed-quick-tests h3 { margin: 0 0 8px 0; }
+.btn-test {
+    background: #f0f4f8;
+    border: 1px solid #d0d8e0;
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+.btn-test:hover {
+    background: #e0e8f0;
+    border-color: #5B8DB8;
+}
+
+.test-log {
+    margin-top: 16px;
+}
+.test-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 8px;
+}
+.test-log-header span { font-weight: 600; font-size: 0.9em; }
+.btn-clear-log {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 0.8em;
+    color: #999;
+}
+.test-log-body {
+    max-height: 300px;
+    overflow-y: auto;
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: monospace;
+    font-size: 0.85em;
+    line-height: 1.6;
+}
+.log-entry { margin-bottom: 4px; }
+.log-entry.ok { color: #2e7d32; }
+.log-entry.fail { color: #c62828; }
+.log-entry.info { color: #1565c0; }
+</style>
+
+<script>
+(function() {
+    'use strict';
+
+    var logBody = document.getElementById('testLogBody');
+    var testLog = document.getElementById('testLog');
+
+    function log(type, text) {
+        testLog.style.display = 'block';
+        var entry = document.createElement('div');
+        entry.className = 'log-entry ' + type;
+        entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + text;
+        logBody.appendChild(entry);
+        logBody.scrollTop = logBody.scrollHeight;
+    }
+
+    // ── Seed buttons ──
+    document.querySelectorAll('.btn-seed').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var level = this.dataset.level;
+            seedData(level);
+        });
+    });
+
+    function seedData(level) {
+        // Disable all seed buttons
+        document.querySelectorAll('.btn-seed').forEach(function(b) { b.disabled = true; });
+
+        var progressArea = document.getElementById('progressArea');
+        var resultArea = document.getElementById('resultArea');
+        progressArea.style.display = 'block';
+        resultArea.style.display = 'none';
+
+        var bar = document.getElementById('progressBar');
+        var text = document.getElementById('progressText');
+        bar.style.width = '30%';
+        text.textContent = '正在生成 ' + level + ' 级数据...';
+
+        log('info', '开始 seed: ' + level);
+
+        fetch('/admin/seed?level=' + level, {
+            method: 'POST',
+            headers: { 'X-Seed-Key': 'xiaoxu-dev-tool' },
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            bar.style.width = '100%';
+            text.textContent = '完成！';
+
+            resultArea.style.display = 'block';
+            document.getElementById('resultIcon').textContent = '✅';
+            document.getElementById('resultTitle').textContent =
+                level === 'new' ? '🌱 新用户数据已生成' :
+                level === 'light' ? '🌿 轻度用户数据已生成' :
+                '🌳 中度用户数据已生成';
+
+            var stats = data.stats || {};
+            document.getElementById('resultStats').innerHTML =
+                '<div class="stat-item"><div class="stat-value">' + (stats.sessions || 0) +
+                '</div><div class="stat-label">会话</div></div>' +
+                '<div class="stat-item"><div class="stat-value">' + (stats.messages || 0) +
+                '</div><div class="stat-label">消息</div></div>' +
+                '<div class="stat-item"><div class="stat-value">' + (stats.insights || 0) +
+                '</div><div class="stat-label">洞察</div></div>' +
+                '<div class="stat-item"><div class="stat-value">' + (stats.diaries || 0) +
+                '</div><div class="stat-label">日记</div></div>';
+
+            log('ok', level + ' 数据生成成功: ' + stats.messages + ' 条消息, ' +
+                stats.insights + ' 个洞察, ' + stats.diaries + ' 篇日记');
+        })
+        .catch(function(err) {
+            bar.style.width = '100%';
+            bar.style.background = '#c62828';
+            text.textContent = '失败: ' + err.message;
+
+            resultArea.style.display = 'block';
+            document.getElementById('resultIcon').textContent = '❌';
+            document.getElementById('resultTitle').textContent = '生成失败';
+            document.getElementById('resultStats').innerHTML = '';
+
+            log('fail', 'seed 失败: ' + err.message);
+        })
+        .finally(function() {
+            document.querySelectorAll('.btn-seed').forEach(function(b) { b.disabled = false; });
+        });
+    }
+
+    // ── Quick test: send message ──
+    document.getElementById('btnTestMessage').addEventListener('click', function() {
+        var btn = this;
+        btn.disabled = true;
+        log('info', '发送测试消息...');
+
+        fetch('/chat/api/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: '今天心情不太好，想找人聊聊' }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var reply = data.response || '(空)';
+            var meta = data.structured_meta || {};
+            log('ok', 'AI 回复 (' + reply.length + ' 字符): ' + reply.slice(0, 80));
+            if (meta.emotion_tags && meta.emotion_tags.length) {
+                log('ok', '情绪识别: ' + meta.emotion_tags.join(', '));
+            }
+            if (meta.stage) {
+                log('ok', '阶段: ' + meta.stage);
+            }
+        })
+        .catch(function(err) {
+            log('fail', '发送失败: ' + err.message);
+        })
+        .finally(function() {
+            btn.disabled = false;
+        });
+    });
+
+    // ── Quick test: S001 story ──
+    document.getElementById('btnTestStory').addEventListener('click', function() {
+        var btn = this;
+        btn.disabled = true;
+        log('info', '开始多轮剧本 S001（滑雪 vs 编程）...');
+
+        var turns = [
+            "我突然想通了一件事。我学滑雪的时候特别开心，因为我是初学者，没有评判标准，只要去尝试就是好的。",
+            "但对计算机不一样。我在这行太久了，总是在判断自己进度快不快、技能够不够熟练。我害怕被外界评判，所以先不断评判自己。",
+            "有时候我会想我是不是根本不适合这个行业。",
+            "我想沉浸式搞好我的项目，但我害怕方向不对。没有对比和反馈，只有我一个人在搞。",
+            "我害怕闭门造车。特别是找实习的项目，我不知道方向对不对。",
+            "但我转念一想，我同学也有没找到工作的。我把精力全放这上面，它完全牵动着我的情绪。",
+            "所以我把健身和做美食加了进来。周末不学，就做这两件事。"
+        ];
+
+        function sendTurn(i) {
+            if (i >= turns.length) {
+                log('ok', '✅ 剧本 S001 完成！共 ' + turns.length + ' 轮');
+                btn.disabled = false;
+                return;
+            }
+
+            fetch('/chat/api/new', { method: 'POST' }).then(function() {
+                log('info', 'T' + (i+1) + ' 👤 ' + turns[i].slice(0, 30) + '...');
+
+                fetch('/chat/api/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: turns[i] }),
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var reply = data.response || '';
+                    var meta = data.structured_meta || {};
+                    log('ok', 'T' + (i+1) + ' 🤖 [' + (meta.stage || '?') + '] ' +
+                        reply.slice(0, 50) + '...');
+                    if (meta.emotion_tags && meta.emotion_tags.length) {
+                        log('info', '   情绪: ' + meta.emotion_tags.join(', '));
+                    }
+                    sendTurn(i + 1);
+                })
+                .catch(function(err) {
+                    log('fail', 'T' + (i+1) + ' 失败: ' + err.message);
+                    btn.disabled = false;
+                });
+            });
+        }
+
+        sendTurn(0);
+    });
+
+    // ── Clear log ──
+    document.getElementById('btnClearLog').addEventListener('click', function() {
+        logBody.innerHTML = '';
+        testLog.style.display = 'none';
+    });
+})();
+</script>
+{% endblock %}

@@ -44,6 +44,9 @@
                 <a href="{{ url_for('profile.index') }}" class="nav-item{% if request.path.startswith('/profile') %} active{% endif %}">
                     <span class="nav-icon">👤</span> 我的
                 </a>
+                <a href="{{ url_for('admin.seed_tool') }}" class="nav-item{% if request.path.startswith('/admin/seed-tool') %} active{% endif %}">
+                    <span class="nav-icon">🧪</span> 测试工具
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <span class="mode-badge" id="modeBadge">
