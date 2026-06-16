@@ -164,6 +164,23 @@ def create_app():
             _run_daily_diaries()
         return "Diary generation triggered. Check logs."
 
+    @app.route("/admin/trigger-insights")
+    def trigger_insights():
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            from flask import redirect, url_for
+            return redirect(url_for("auth.login"))
+        with app.app_context():
+            _run_daily_insights()
+        return "Insight generation triggered. Check logs."
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            from flask import redirect, url_for
+            return redirect(url_for("auth.login"))
+        with app.app_context():
+            _run_daily_diaries()
+        return "Diary generation triggered. Check logs."
+
     # ── Start scheduler ──
     _start_scheduler(app)
 
@@ -190,6 +207,9 @@ def _run_daily_diaries():
             logger.error("Daily diary error for user %d: %s", user.id, e)
 
     logger.info("Daily diary generation complete: %d diaries for %s", count, yesterday_bj)
+
+    # ── 每天也生成洞察 ──
+    _run_daily_insights()
 
     # Also check and generate monthly summaries that need updating
     _run_monthly_summaries()
@@ -228,6 +248,29 @@ def _run_monthly_summaries():
 
     if generated:
         logger.info("Monthly summaries auto-generated: %d new", generated)
+
+
+def _run_daily_insights():
+    """为昨天有聊天的用户生成每日洞察。"""
+    from models.user import User
+    from agents.unified_analysis import UnifiedAnalysisAgent
+
+    bj_now = datetime.now(timezone.utc) + timedelta(hours=8)
+    yesterday_bj = bj_now.date() - timedelta(days=1)
+
+    agent = UnifiedAnalysisAgent()
+    users = User.query.all()
+    count = 0
+    for user in users:
+        try:
+            insight = agent.generate_daily_insight(user, yesterday_bj)
+            if insight:
+                count += 1
+        except Exception as e:
+            logger.error("Daily insight error for user %d: %s", user.id, e)
+
+    if count:
+        logger.info("Daily insight generation complete: %d insights for %s", count, yesterday_bj)
 
 
 def _start_scheduler(app):
