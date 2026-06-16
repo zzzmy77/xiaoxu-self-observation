@@ -425,6 +425,18 @@
         try {
             var raw = localStorage.getItem(PANEL_STORAGE_KEY);
             if (!raw) return;
+
+            // ── Fix: 空对话不恢复旧面板数据 ──
+            // 检查当前页面是否真的有聊天内容（除了 proactive msg 之外的对话消息）
+            var hasUserMessage = Array.from(document.querySelectorAll('#messageContainer .message-user')).length > 0;
+            var hasNonProactiveAssistantMessage = Array.from(document.querySelectorAll('#messageContainer .message-assistant')).filter(function(el) {
+                return !el.classList.contains('proactive-msg') && !el.querySelector('.proactive-msg');
+            }).length > 0;
+            if (!hasUserMessage && !hasNonProactiveAssistantMessage) {
+                // 新用户、新对话, 清除旧的 localStorage 残留
+                localStorage.removeItem(PANEL_STORAGE_KEY);
+                return;
+            }
             var state = JSON.parse(raw);
 
             // 恢复变量
