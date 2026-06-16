@@ -4,7 +4,7 @@
 
 **一面有记忆的镜子** —— 通过 AI 引导式对话，让你慢慢看清自己。
 
-[🔗 Coze 原型验证](YOUR_COZE_BOT_LINK) · [📖 产品文档](/小绪_自我观察日记_产品经理完整手册.docx)
+[📖 产品文档](/小绪_自我观察日记_产品经理完整手册.docx)
 
 </div>
 
@@ -29,52 +29,41 @@
 | 📈 **成长周期报告** | 每 30 天自动生成一份成长总结（情绪分布+归因分布+成长时间线） |
 | 👂 **双模式切换** | 探索模式（引导型） vs 倾听模式（纯陪伴），覆盖不同场景 |
 | 👁 **AI 透明性** | 对话界面实时展示 AI 当前"看到"的情绪、归因和阶段 |
+| 🧠 **人物认知模型** | 10维度记忆系统，每次对话都在构建关于用户的深度理解 |
 
 ---
 
 ## 🏗 系统架构
 
 ```
-┌─────────────┐     ┌─────────────────────────────────────────────┐
-│  用户输入    │────▶│            Multi-Agent System               │
-└─────────────┘     │                                             │
-                    │  ┌─────────────────────────────┐            │
-                    │  │   ConversationAgent          │            │
-                    │  │   ├─ EmpathySkill            │            │
-                    │  │   ├─ AttributionSkill        │            │
-                    │  │   ├─ ChallengeSkill          │            │
-                    │  │   └─ ClosureSkill            │            │
-                    │  └──────────┬──────────────────┘            │
-                    │             │ structured_meta (JSON)        │
-                    │  ┌──────────▼──────────────────┐            │
-                    │  │   MemoryAgent                │            │
-                    │  │   ├─ 写入 Message → DB      │            │
-                    │  │   ├─ 更新 User Profile       │            │
-                    │  │   └─ 记录 AnalyticsEvent     │            │
-                    │  └──────────┬──────────────────┘            │
-                    │             │                               │
-                    │  ┌──────────▼──────────────────┐            │
-                    │  │   InsightAgent               │            │
-                    │  │     跨 Session 模式识别      │            │
-                    │  └──────────┬──────────────────┘            │
-                    │             │                               │
-                    │  ┌──────────▼──────────────────┐            │
-                    │  │   DiaryAgent                 │            │
-                    │  │     对话 → 结构化日记        │            │
-                    │  └──────────┬──────────────────┘            │
-                    └─────────────┼───────────────────────────────┘
-                                  │
-                    ┌─────────────▼───────────────────────────────┐
-                    │              SQLite / PostgreSQL            │
-                    │  User · Session · Message · Diary · Insight │
-                    │  MonthlySummary · AnalyticsEvent            │
-                    └─────────────────────────────────────────────┘
+用户输入 → ConversationAgent（共情→归因→挑战→收束）
+              ↓ structured_meta (JSON)
+          MemoryAgent（更新10维认知模型 + 情绪趋势 + 核心信念）
+              ↓
+          UnifiedAnalysis（跨会话模式识别 + 洞察生成）
+              ↓
+          DiaryAgent（对话→结构化日记）
 ```
 
-**为什么拆成多个 Agent 而不是一个单 Agent？**
+**为什么拆成多个 Agent？**
 - **职责分离**：每个 Agent 只做一件事，迭代互不干扰
 - **可测试**：对话质量可以单独评估，不影响记忆和洞察
 - **灵活扩展**：可以单独升级某个 Agent 的推理能力
+
+### 人物认知模型（10维度）
+
+| 维度 | 内容 |
+|------|------|
+| 基础信息 | 年龄、职业、教育、居住 |
+| 成长背景 | 童年经历、家庭关系、关键事件 |
+| 人生经历时间线 | 重大事件按时间排序 |
+| 核心关系网络 | 家人/伴侣/朋友的关系动态 |
+| 精神发展轨迹 | 核心信念的发现→演化→松动 |
+| 情绪与心理健康趋势 | 情绪频率、波动、趋势 |
+| 当前生活状态 | 工作、日常、挑战、优势 |
+| 人格与认知特征 | 行为模式 + 思维习惯 |
+| 价值观与深层需求 | 什么对用户最重要 |
+| 兴趣与关注 | 用户关心什么 |
 
 ---
 
@@ -84,9 +73,8 @@
 |------|------|
 | **后端** | Python 3 + Flask + SQLAlchemy |
 | **AI** | DeepSeek (OpenAI-compatible API) + 自定义 Agent 框架 |
-| **前端** | Jinja2 + Vanilla JS + Chart.js |
+| **前端** | Jinja2 + Vanilla JS + Chart.js (Canvas) |
 | **数据库** | SQLite (dev) / PostgreSQL (prod) |
-| **验证** | Coze 概念验证 → 完整工程实现 |
 
 ---
 
@@ -97,43 +85,40 @@ self_observation/
 ├── agents/                  # AI Agent 层
 │   ├── conversation_agent   # 主对话 Agent（两种模式）
 │   ├── diary_agent          # 日记生成 Agent
+│   ├── memory_agent         # 认知模型更新 Agent
 │   ├── insight_agent        # 跨会话洞察 Agent
-│   ├── memory_agent         # 数据存储 Agent
-│   └── monthly_summary_agent# 月度总结 Agent
+│   ├── unified_analysis     # 统一分析（洞察+模式库更新）
+│   ├── knowledge_base       # 私人知识库（三层检索）
+│   └── knowledge_store      # 向量存储（RAG）
 ├── agent_framework/         # Agent 框架基础层
 │   ├── base.py              # BaseAgent + BaseSkill 抽象
 │   ├── orchestrator.py      # 多 Agent 编排
-│   ├── registry.py          # Agent 注册中心
-│   └── skills/              # 技能插件（empathy / attribution / challenge / closure）
+│   └── skills/              # 技能插件
 ├── models/                  # 数据模型层
-│   ├── user.py              # 用户（含身份/情绪频率/归因链）
+│   ├── user.py              # 用户（含认知模型 JSON）
 │   ├── session.py           # 对话 Session
-│   ├── message.py           # 消息（含 structured_meta JSON）
-│   ├── diary.py             # 自动生成的日记
-│   ├── insight.py           # 跨会话洞察
-│   ├── monthly_summary.py   # 30天周期报告
-│   └── analytics.py         # 产品埋点
-├── routes/                  # Web 路由层
-│   ├── chat.py              # 对话接口
-│   ├── insights.py          # 洞察仪表盘 + 模式发现
+│   ├── message.py           # 消息（含 structured_meta）
+│   ├── diary.py             # 日记
+│   ├── insight.py           # 洞察（含演化阶段）
+│   └── monthly_summary.py   # 月度报告
+├── routes/                  # Web 路由
+│   ├── chat.py              # 对话接口（流式 SSE）
+│   ├── insights.py          # 洞察 V2（情绪云+认知模式+转变支点）
 │   ├── diaries.py           # 日记+日历
-│   ├── monthly.py           # 月度报告
-│   ├── profile.py           # 用户设置
-│   └── analytics.py         # 数据看板
-├── prompts/                 # Prompt 版本管理
-│   ├── conversation_exploring_v1.md
-│   ├── conversation_exploring_v2.md
-│   ├── conversation_listening_v1.md
-│   └── CHANGELOG.md
-├── tests/                   # 测试套件
-│   ├── eval_set.py          # AI 评估集（8 个测试用例 + 5 个 Bad Case）
-│   └── test_api.py          # API 冒烟测试
+│   ├── monthly.py           # 月报
+│   └── auth.py              # 登录注册
+├── tests/                   # 测试
+│   ├── test_api.py          # API 冒烟测试（24 个）
+│   ├── test_seeded_levels.py# 数据等级 + 对话质量测试（15 个）
+│   ├── seed_factory.py      # 批量生成测试用户
+│   ├── stories/             # 可演示的对话剧本
+│   └── test_remote.py       # 远程部署测试
 ├── templates/               # Jinja2 模板
 ├── static/                  # CSS + JS
+├── prompts/                 # Prompt 版本管理
 ├── app.py                   # Flask 入口
 ├── config.py                # 配置
-├── seed_data.py             # Demo 数据
-└── .env.example             # 环境变量模板
+└── seed_data.py             # Demo 数据
 ```
 
 ---
@@ -141,50 +126,40 @@ self_observation/
 ## 🚀 快速启动
 
 ```bash
-# 1. 克隆项目
-cd self_observation
-
-# 2. 安装依赖
+# 1. 安装依赖
 pip install -r requirements.txt
 
-# 3. 配置 API Key
+# 2. 配置 API Key
 cp .env.example .env
 # 打开 .env 填入你的 DeepSeek API Key
 
-# 4. 初始化 Demo 数据
+# 3. 初始化 Demo 数据
 python seed_data.py
 
-# 5. 启动开发服务器
+# 4. 启动开发服务器
 python app.py
 
-# 6. 访问 http://localhost:5000
+# 5. 访问 http://localhost:5000
+# 默认账号: demo / demo123
 ```
 
 ---
 
-## 🧪 AI 质量评估
+## 🧪 测试
 
-项目包含一个完整的 AI 评估集 `tests/eval_set.py`：
-
-- **8 个测试用例**：覆盖工作压力、学习焦虑、绝对化用语、积极情绪、模糊情绪、人际关系、安全边界、倾听模式
-- **5 个 Bad Case**：记录真实踩过的坑（追问过密、共情太浅、格式失效等）及改进方案
-- 每个用例定义了：期望阶段流、期望情绪标签、安全边界检查
-
-API 冒烟测试：
 ```bash
-python -m pytest tests/test_api.py -v
+# 全部测试
+python -m unittest tests.test_api tests.test_seeded_levels -v
+
+# 仅 Seed Factory 测试（无需 API Key）
+python -m unittest tests.test_seeded_levels.TestSeedFactory -v
+
+# 多轮对话质量测试（需 API Key）
+DEEPSEEK_API_KEY=*** python -m unittest tests.test_seeded_levels.TestMultiTurnStoryQuality -v
+
+# 远程部署测试
+RAILWAY_URL=https://your-app.railway.app python tests/test_remote.py
 ```
-
----
-
-## 🔄 Prompt 迭代历程
-
-| 版本 | 变更 | 原因 |
-|------|------|------|
-| v1 | 四步引导结构 + 结构化输出格式 | MVP 需要验证"引导能否帮用户归因" |
-| v2 | 注入用户个人上下文（身份/情绪趋势/归因模式） | 用户反馈"每次对话都是新的"，需要延续感 |
-
-详见 `prompts/CHANGELOG.md`
 
 ---
 
@@ -193,15 +168,6 @@ python -m pytest tests/test_api.py -v
 完整的产品经理工作手册（含市场分析、竞品分析、用户测试设计、PRD、原型设计）：
 
 👉 [小绪·自我观察日记·产品经理完整手册](/小绪_自我观察日记_产品经理完整手册.docx)
-
----
-
-## 🧑‍💻 关于作者
-
-**曾梦缘** · 广外软件工程本科 · 港理工 IT 硕士
-
-- 目标岗位：AI 产品经理
-- 博客/作品集：[coming soon]
 
 ---
 
