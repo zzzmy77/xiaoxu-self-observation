@@ -200,3 +200,310 @@ def insight_data():
     }
 
     return jsonify(response)
+
+
+# ──────────────────────────────────────────────
+# Insights V2 API — 洞察页新版数据
+# ──────────────────────────────────────────────
+
+EMOTION_COLORS = {
+    "焦虑": "#E8A020", "压力": "#D4911A", "委屈": "#B38B5B",
+    "愤怒": "#C0392B", "沮丧": "#7F8C8D", "无力": "#95A5A6",
+    "开心": "#27AE60", "自豪": "#2980B9", "放松": "#1ABC9C",
+    "失落": "#8E44AD", "不安": "#E67E22", "困惑": "#F39C12",
+    "绝望": "#C0392B", "悲伤": "#5D6D7E", "自我怀疑": "#AAB7B8",
+    "觉察": "#2ECC71", "思考": "#3498DB", "烦躁": "#E67E22",
+    "恐惧": "#C0392B", "惊讶": "#9B59B6",
+}
+
+
+def _build_emotion_cloud(emotion_freq: dict) -> dict:
+    """将 emotion_freq 转为气泡图数据。"""
+    if not emotion_freq:
+        return {"bubbles": [], "overall": "neutral"}
+
+    max_count = max(emotion_freq.values()) if emotion_freq else 1
+    negative_set = {"焦虑", "压力", "委屈", "愤怒", "沮丧", "无力",
+                    "失落", "不安", "悲伤", "自我怀疑", "烦躁", "恐惧"}
+
+    bubbles = []
+    pos_total, neg_total = 0, 0
+
+    for emotion, count in sorted(emotion_freq.items(), key=lambda x: -x[1]):
+        size = round(count / max_count, 2)
+        group = "negative" if emotion in negative_set else "positive"
+        color = EMOTION_COLORS.get(emotion, "#888")
+        bubbles.append({
+            "emotion": emotion,
+            "size": max(size, 0.2),  # 最小0.2，太小看不见
+            "group": group,
+            "color": color,
+        })
+        if group == "positive":
+            pos_total += count
+        else:
+            neg_total += count
+
+    total = pos_total + neg_total
+    if total == 0:
+        overall = "neutral"
+    elif pos_total / total > 0.6:
+        overall = "positive"
+    elif neg_total / total > 0.6:
+        overall = "negative"
+    else:
+        overall = "mixed"
+
+    return {"bubbles": bubbles, "overall": overall}
+
+
+def _get_warm_message(user) -> str:
+    """读取缓存的 warm message，没有则返回 None（前端调用 LLM 生成）。"""
+    profile = user.profile or {}
+    cached = profile.get("last_warm_message", {})
+    if cached and isinstance(cached, dict):
+        return cached.get("text", "")
+    return ""
+
+
+def _get_pivot_point(user) -> str:
+    """读取缓存的转变支点，没有则返回 None。"""
+    profile = user.profile or {}
+    cached = profile.get("last_pivot_point", {})
+    if cached and isinstance(cached, dict):
+        return cached.get("text", "")
+    return ""
+
+
+def _build_key_discoveries(user) -> list:
+    """从 Insight 表读取关键发现。"""
+    insights = (Insight.query
+                .filter_by(user_id=user.id)
+                .order_by(Insight.created_at.desc())
+                .limit(10)
+                .all())
+    discoveries = []
+    for ins in insights:
+        if ins.insight_text:
+            discoveries.append({
+                "date": ins.created_at.strftime("%m/%d") if ins.created_at else "",
+                "title": ins.insight_text[:60] + ("..." if len(ins.insight_text) > 60 else ""),
+                "detail": ins.insight_text,
+                "emotions": ins.emotion_tags or [],
+            })
+    return discoveries
+
+
+def _build_cognitive_patterns(cm: dict) -> list:
+    """从 cognitive_model 读取认知模式。"""
+    patterns = []
+
+    # 从核心模式库读取
+    pattern_lib = cm.get("核心模式库", [])
+    for p in pattern_lib:
+        patterns.append({
+            "name": p.get("name", ""),
+            "description": p.get("description", ""),
+            "occurrence_count": len(p.get("occurrences", [])),
+            "first_seen": p.get("discovered_at", ""),
+            "triggers": p.get("triggers", [])[:3],
+            "evolution": [e.get("stage", "") for e in p.get("evolution", [])],
+        })
+
+    # 从精神发展轨迹读取核心信念（提取行为+认知映射）
+    beliefs = cm.get("精神发展轨迹", {}).get("core_beliefs", [])
+    belief_related = cm.get("人格行为与认知特征", {})
+    behavioral = belief_related.get("behavioral", [])
+    cognitive = belief_related.get("cognitive", [])
+
+    # 合并：把信念和特质合并为模式卡片
+    for b in beliefs:
+        b_name = b.get("belief", "")
+        if not b_name:
+            continue
+        # 找匹配的行为特征
+        related_behaviors = [
+            t.get("trait", "") for t in behavioral
+            if any(w in b_name for w in t.get("evidence", "")) or any(
+                w in t.get("trait", "") for w in ["评判", "比较", "讨好", "否定"]
+            )
+        ]
+        patterns.append({
+            "name": b_name[:20],
+            "description": f"核心信念：{b_name}",
+            "occurrence_count": len(b.get("milestones", [])),
+            "first_seen": b.get("first_noticed", ""),
+            "behavior": "、".join(related_behaviors[:2]) if related_behaviors else "",
+            "cognition": b.get("root_hypothesis", ""),
+            "evolution": [m.get("milestone", "") for m in b.get("milestones", [])],
+        })
+
+    return patterns
+
+
+def _build_stats(user, emotion_freq: dict, session_count: int) -> dict:
+    """数据统计（折叠区）。"""
+    insights_count = Insight.query.filter_by(user_id=user.id).count()
+    return {
+        "sessions": session_count,
+        "insights": insights_count,
+        "top_emotions": dict(sorted(emotion_freq.items(), key=lambda x: -x[1])[:6]),
+    }
+
+
+def _generate_warm_message_llm(user, emotion_freq: dict, discoveries: list) -> str:
+    """调 LLM 生成一句温暖的话。"""
+    from config import Config
+    if not Config.llm_available():
+        return ""
+
+    prompt = (
+        "你是一个温柔的心理陪伴助手。根据用户的近期情绪数据和关键洞察，"
+        "用一句话温暖地总结用户最近的状态。不超过40字，不要评价，只要关心。\n\n"
+        f"情绪频率：{dict(list(emotion_freq.items())[:5])}\n"
+        f"最近发现：{[d['title'] for d in discoveries[:3]]}\n\n"
+        "输出格式：纯文本一句话，例如「最近焦虑比较多，但你也开始觉察了——你在慢慢变化。」"
+    )
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=Config.LLM_API_KEY, base_url=Config.LLM_BASE_URL)
+        resp = client.chat.completions.create(
+            model=Config.LLM_MODEL,
+            messages=[{"role": "system", "content": prompt}],
+            temperature=0.7,
+            max_tokens=100,
+        )
+        text = (resp.choices[0].message.content or "").strip().strip('"').strip("'")
+        return text if text else ""
+    except Exception:
+        return ""
+
+
+def _generate_pivot_point_llm(user, beliefs: list, discoveries: list) -> str:
+    """调 LLM 生成转变支点。"""
+    from config import Config
+    if not Config.llm_available():
+        return ""
+
+    # 构造对比数据：看核心信念的演化
+    belief_evolution = []
+    for b in beliefs:
+        milestones = b.get("milestones", []) or b.get("evolution", [])
+        if milestones:
+            belief_evolution.append({
+                "name": b.get("belief", "") or b.get("name", ""),
+                "milestones": [m.get("milestone", "") or m.get("stage", "") for m in milestones],
+            })
+
+    prompt = (
+        "你是一个自我成长观察者。用户的认知模型显示以下核心信念的演化过程，"
+        "请找出一条'转变的痕迹' —— 同一个主题从负面到正面的变化。\n\n"
+        f"信念演化：{json.dumps(belief_evolution, ensure_ascii=False)}\n"
+        f"最近洞察：{[d['title'] for d in discoveries[:3]]}\n\n"
+        "输出要求：\n"
+        "1. 用对比的方式写：'你X次提到...但最近你...'\n"
+        "2. 突出用户的进步和力量\n"
+        "3. 60-100字\n"
+        "4. 纯文本，不要JSON"
+    )
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=Config.LLM_API_KEY, base_url=Config.LLM_BASE_URL)
+        resp = client.chat.completions.create(
+            model=Config.LLM_MODEL,
+            messages=[{"role": "system", "content": prompt}],
+            temperature=0.7,
+            max_tokens=200,
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except Exception:
+        return ""
+
+
+@insights_bp.route("/api/v2")
+@login_required
+def insight_v2():
+    """Insights V2 API — 为洞察页新版前端提供数据。"""
+    import json
+    from app import db
+    from sqlalchemy.orm.attributes import flag_modified
+
+    user = current_user
+    cm = user.cognitive_model or {}
+    profile = user.profile or {}
+
+    # ── 情绪频率（profile → cognitive_model → 消息聚合）──
+    emotion_freq = profile.get("emotion_frequencies", {})
+    if not emotion_freq:
+        emotion_freq = cm.get("情绪与心理健康趋势", {}).get("recent_trend", {}).get("dominant_emotions", [])
+        if emotion_freq:
+            # 解析 "焦虑×5" 格式
+            parsed = {}
+            for item in emotion_freq:
+                sep = "×" if "×" in item else "x"
+                if sep in item:
+                    parts = item.split(sep)
+                    parsed[parts[0]] = int(parts[1])
+            emotion_freq = parsed
+        else:
+            emotion_freq = {}
+
+    sessions = Session.query.filter_by(user_id=user.id).count()
+
+    # ── 构建各板块 ──
+    emotion_cloud = _build_emotion_cloud(emotion_freq)
+    key_discoveries = _build_key_discoveries(user)
+    cognitive_patterns = _build_cognitive_patterns(cm)
+    stats = _build_stats(user, emotion_freq, sessions)
+
+    # ── 暖言 & 支点：优先读取缓存，没有则后台生成 ──
+    warm_message = _get_warm_message(user)
+    pivot_point = _get_pivot_point(user)
+
+    should_generate = bool(emotion_freq) and len(key_discoveries) > 0
+    generated_warm = False
+
+    if should_generate:
+        if not warm_message:
+            warm_text = _generate_warm_message_llm(user, emotion_freq, key_discoveries)
+            if warm_text:
+                profile = dict(user.profile or {})
+                profile["last_warm_message"] = {"text": warm_text, "generated_at": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()}
+                user.profile = profile
+                flag_modified(user, 'profile')
+                db.session.commit()
+                warm_message = warm_text
+                generated_warm = True
+
+        if not pivot_point:
+            beliefs = cm.get("精神发展轨迹", {}).get("core_beliefs", [])
+            pivot_text = _generate_pivot_point_llm(user, beliefs, key_discoveries)
+            if pivot_text:
+                profile = dict(user.profile or {})
+                profile["last_pivot_point"] = {"text": pivot_text, "generated_at": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()}
+                user.profile = profile
+                flag_modified(user, 'profile')
+                db.session.commit()
+                pivot_point = pivot_text
+
+    # ── mood_headline ──
+    overall = emotion_cloud.get("overall", "neutral")
+    mood_map = {
+        "positive": "你的情绪在向好的方向移动",
+        "negative": "最近负面情绪比较多，但觉察本身就是转变的开始",
+        "mixed": "你经历着丰富的情绪变化，每一种都在告诉你些什么",
+        "neutral": "你的情绪状态比较平稳",
+    }
+    mood_headline = mood_map.get(overall, "")
+
+    return jsonify({
+        "mood_headline": mood_headline,
+        "emotion_cloud": emotion_cloud,
+        "warm_message": warm_message,
+        "key_discoveries": key_discoveries,
+        "cognitive_patterns": cognitive_patterns,
+        "pivot_point": pivot_point,
+        "stats": stats,
+    })

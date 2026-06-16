@@ -1,134 +1,258 @@
-/* 洞察页图表 */
+/* 洞察 V2 — 情绪云气泡图 + 认知模式卡片 + 转变支点 */
 (function () {
     'use strict';
 
-    var emotionChart = null;
-    var colors = ['#F9D8C6', '#A9C0D6', '#C6D8A0', '#E8B8A0', '#D4A0C8', '#A0C8C8', '#F0C8A0'];
+    var EMOTION_NAMES = {
+        '焦虑': '😰', '压力': '😣', '委屈': '🥺', '愤怒': '😠',
+        '沮丧': '😞', '无力': '😩', '失落': '😿', '不安': '😥',
+        '悲伤': '😢', '自我怀疑': '🤨', '烦躁': '😤', '恐惧': '😨',
+        '困惑': '🤔', '开心': '😊', '放松': '😌', '觉察': '💡',
+        '思考': '🧐', '自豪': '🎉',
+    };
 
-    // Dashboard
-    function loadDashboard() {
-        var dash = document.getElementById('dashboard');
-        if (!dash) return;
+    // ── 主入口 ──
+    function loadV2() {
+        var container = document.querySelector('.insights-container');
+        if (!container) return;
 
-        Promise.all([
-            fetch('/insights/api/data').then(function (r) { return r.json(); }),
-            fetch('/insights/').then(function () { return; }), // ensure data loaded
-        ])
-        .then(function (results) {
-            var data = results[0];
-            var emotions = data.emotion_frequencies || {};
-            var attributions = data.attributions || [];
-            var insights = data.self_insights || [];
+        // Show loading
+        var main = document.getElementById('insightsMain');
+        if (!main) {
+            main = document.createElement('div');
+            main.id = 'insightsMain';
+            container.insertBefore(main, container.querySelector('.insight-list'));
+        }
+        main.innerHTML = '<div class="v2-loading">加载中...</div>';
 
-            var emKeys = Object.keys(emotions);
-            var emTotal = data.total_emotions || 0;
-            var topEm = emKeys.length ? emKeys.slice(0, 3).join(', ') : '暂无数据';
-
-            var topAttr = attributions.length ? attributions[0].text.slice(0, 40) : '暂无数据';
-
-            var lastInsight = insights.length ? insights[insights.length - 1].text.slice(0, 80) : '暂无数据';
-
-            // Build patterns section (legacy keyword-based)
-            var patternsHtml = '';
-            if (data.patterns && data.patterns.length) {
-                patternsHtml = '<div class="dash-section insight-timeline" style="grid-column:1/-1">'
-                    + '<h4>🌟 模式发现</h4>'
-                    + data.patterns.map(function(p) {
-                        return '<div class="insight-timeline-item">' + p + '</div>';
-                    }).join('')
-                    + '</div>';
-            }
-
-            // ── Core Beliefs Section ──
-            var beliefsHtml = '';
-            if (data.core_beliefs && data.core_beliefs.length) {
-                beliefsHtml = '<div class="dash-section" style="grid-column:1/-1">'
-                    + '<h4>🧠 核心信念</h4><div class="belief-list">';
-                data.core_beliefs.forEach(function(b) {
-                    var formed = b.formed_at ? ('<span class="belief-date">' + b.formed_at + '</span>') : '';
-                    var confidence = b.confidence ? Math.round(b.confidence * 100) + '%' : '';
-                    beliefsHtml += '<div class="belief-card">'
-                        + '<p class="belief-text">' + escapeHtml(b.belief) + '</p>'
-                        + '<div class="belief-meta">' + formed + ' ' + confidence + '</div>'
-                        + '</div>';
-                });
-                beliefsHtml += '</div></div>';
-            }
-
-            // ── Cognitive Pattern Library Section ──
-            var patternLibHtml = '';
-            if (data.pattern_library && data.pattern_library.length) {
-                patternLibHtml = '<div class="dash-section insight-timeline" style="grid-column:1/-1">'
-                    + '<h4>📚 认知模式库</h4>'
-                    + data.pattern_library.map(function(p) {
-                        var count = p.occurrence_count || 1;
-                        var timeline = '';
-                        if (p.first_seen) {
-                            timeline = '首次: ' + p.first_seen;
-                            if (p.last_seen && p.last_seen !== p.first_seen) {
-                                timeline += ' → 最近: ' + p.last_seen;
-                            }
-                        }
-                        return '<div class="insight-timeline-item">'
-                            + '<div class="pattern-text">' + escapeHtml(p.pattern) + '</div>'
-                            + '<div class="pattern-meta">出现 ' + count + ' 次' + (timeline ? ' · ' + timeline : '') + '</div>'
-                            + '</div>';
-                    }).join('')
-                    + '</div>';
-            }
-
-            // ── Relationship Dynamics Section ──
-            var relHtml = '';
-            if (data.relationships && data.relationships.length) {
-                relHtml = '<div class="dash-section" style="grid-column:1/-1">'
-                    + '<h4>👥 核心关系网络</h4><div class="relationship-list">'
-                    + data.relationships.map(function(r) {
-                        var impact = r.impact ? '<br><span class="rel-impact">' + escapeHtml(r.impact) + '</span>' : '';
-                        return '<div class="relationship-card">'
-                            + '<strong>' + escapeHtml(r.name || '') + '</strong>'
-                            + (r.role ? ' · ' + escapeHtml(r.role) : '')
-                            + impact
-                            + '</div>';
-                    }).join('')
-                    + '</div></div>';
-            }
-
-            // ── Traits Section ──
-            var traitsHtml = '';
-            if (data.traits && (data.traits.behavioral || data.traits.cognitive)) {
-                traitsHtml = '<div class="dash-section" style="grid-column:1/-1">'
-                    + '<h4>🎭 人格与认知特征</h4><div class="traits-list">';
-                if (data.traits.behavioral && data.traits.behavioral.length) {
-                    traitsHtml += '<div class="trait-group"><h5>行为特征</h5><ul>'
-                        + data.traits.behavioral.map(function(t) { return '<li>' + escapeHtml(t) + '</li>'; }).join('')
-                        + '</ul></div>';
-                }
-                if (data.traits.cognitive && data.traits.cognitive.length) {
-                    traitsHtml += '<div class="trait-group"><h5>认知特征</h5><ul>'
-                        + data.traits.cognitive.map(function(t) { return '<li>' + escapeHtml(t) + '</li>'; }).join('')
-                        + '</ul></div>';
-                }
-                traitsHtml += '</div></div>';
-            }
-
-            dash.innerHTML = '<div class="dashboard-grid">'
-                + '<div class="dash-section"><h4>😊 高频情绪</h4><p class="dash-value">' + topEm + '</p></div>'
-                + '<div class="dash-section"><h4>🎯 最常见归因</h4><p class="dash-value">' + topAttr + '</p></div>'
-                + '<div class="dash-section"><h4>📊 总情绪标记</h4><p class="dash-value">' + emTotal + ' 次</p></div>'
-                + '<div class="dash-section"><h4>📝 最新洞察</h4><p class="dash-value">' + lastInsight + '</p></div>'
-                + patternsHtml
-                + beliefsHtml
-                + patternLibHtml
-                + relHtml
-                + traitsHtml
-                + '</div>';
-
-            // Render emotion chart
-            renderEmotionChart(emotions);
-        });
+        fetch('/insights/api/v2')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                renderV2(main, data);
+            })
+            .catch(function (err) {
+                main.innerHTML = '<div class="v2-loading error">加载失败，请刷新重试</div>';
+            });
     }
 
-    // ── Helpers ──
+    // ── 渲染引擎 ──
+    function renderV2(container, data) {
+        var html = '';
+
+        // 1. Mood headline
+        html += '<div class="v2-headline">'
+            + '<div class="v2-headline-icon">☀️</div>'
+            + '<div class="v2-headline-text">' + escapeHtml(data.mood_headline) + '</div>'
+            + '</div>';
+
+        // 2. Emotion cloud
+        html += '<div class="v2-card v2-card-emotion">'
+            + '<h4>😊 近期情绪状态</h4>'
+            + '<div class="emotion-cloud-wrap">'
+            + '<canvas id="emotionCloudCanvas" width="360" height="200"></canvas>'
+            + '</div>';
+        if (data.warm_message) {
+            html += '<div class="v2-warm-msg">💬 ' + escapeHtml(data.warm_message) + '</div>';
+        }
+        html += '</div>';
+
+        // 3. Key discoveries (时间线)
+        if (data.key_discoveries && data.key_discoveries.length) {
+            html += '<div class="v2-card v2-card-insights">'
+                + '<h4>🔍 这几次聊天的发现</h4>'
+                + '<div class="v2-timeline">';
+            data.key_discoveries.forEach(function (d) {
+                var emotions = (d.emotions || []).map(function (e) {
+                    return '<span class="tag">' + e + '</span>';
+                }).join('');
+                html += '<div class="v2-timeline-item">'
+                    + '<div class="v2-tl-date">' + escapeHtml(d.date) + '</div>'
+                    + '<div class="v2-tl-content">'
+                    + '<div class="v2-tl-title">' + escapeHtml(d.title) + '</div>'
+                    + emotions
+                    + '</div></div>';
+            });
+            html += '</div></div>';
+        }
+
+        // 4. Cognitive patterns
+        if (data.cognitive_patterns && data.cognitive_patterns.length) {
+            html += '<div class="v2-card v2-card-patterns">'
+                + '<h4>🧠 你的认知模式</h4>'
+                + '<div class="v2-pattern-list">';
+            data.cognitive_patterns.forEach(function (p) {
+                var count = p.occurrence_count || 0;
+                var firstSeen = p.first_seen ? '· 最早 ' + p.first_seen : '';
+                var evolution = (p.evolution || []).map(function (s) {
+                    return '<span class="v2-evo-dot">' + s + '</span>';
+                }).join(' → ');
+                html += '<div class="v2-pattern-card">'
+                    + '<div class="v2-pattern-name">' + escapeHtml(p.name) + '</div>'
+                    + '<div class="v2-pattern-meta">出现 ' + count + ' 次 ' + firstSeen + '</div>';
+                if (p.behavior || p.cognition) {
+                    html += '<div class="v2-pattern-detail">';
+                    if (p.behavior) {
+                        html += '<div class="v2-pd-row"><span class="v2-pd-label">行为</span>'
+                            + escapeHtml(p.behavior) + '</div>';
+                    }
+                    if (p.cognition) {
+                        html += '<div class="v2-pd-row"><span class="v2-pd-label">认知</span>'
+                            + escapeHtml(p.cognition) + '</div>';
+                    }
+                    html += '</div>';
+                }
+                if (evolution) {
+                    html += '<div class="v2-pattern-evolution">' + evolution + '</div>';
+                }
+                if (p.triggers && p.triggers.length) {
+                    html += '<div class="v2-pattern-triggers">触发：'
+                        + p.triggers.map(function (t) { return '<span class="tag">' + escapeHtml(t) + '</span>'; }).join('')
+                        + '</div>';
+                }
+                html += '</div>';
+            });
+            html += '</div></div>';
+        }
+
+        // 5. Pivot point
+        if (data.pivot_point) {
+            html += '<div class="v2-card v2-card-pivot">'
+                + '<h4>🌱 一个转变的支点</h4>'
+                + '<div class="v2-pivot-text">' + escapeHtml(data.pivot_point) + '</div>'
+                + '</div>';
+        }
+
+        // 6. Stats (foldable)
+        html += '<div class="v2-card v2-card-stats">'
+            + '<div class="v2-stats-header" id="statsToggle">'
+            + '<h4>📊 数据详情</h4>'
+            + '<span class="v2-stats-arrow">▾</span>'
+            + '</div>'
+            + '<div class="v2-stats-body" id="statsBody" style="display:none;">'
+            + '<div class="v2-stat-row"><span class="v2-stat-label">会话</span><span class="v2-stat-val">'
+            + (data.stats ? data.stats.sessions : 0) + ' 次</span></div>'
+            + '<div class="v2-stat-row"><span class="v2-stat-label">洞察</span><span class="v2-stat-val">'
+            + (data.stats ? data.stats.insights : 0) + ' 条</span></div>';
+        if (data.stats && data.stats.top_emotions) {
+            var topEmo = data.stats.top_emotions;
+            Object.keys(topEmo).forEach(function (emo) {
+                html += '<div class="v2-stat-row"><span class="v2-stat-label">' + emo + '</span>'
+                    + '<span class="v2-stat-val">' + topEmo[emo] + ' 次</span></div>';
+            });
+        }
+        html += '</div></div>';
+
+        container.innerHTML = html;
+
+        // ── 气泡图 ──
+        drawBubbleChart(data.emotion_cloud);
+
+        // ── 折叠交互 ──
+        var toggle = document.getElementById('statsToggle');
+        var body = document.getElementById('statsBody');
+        if (toggle && body) {
+            toggle.addEventListener('click', function () {
+                var isOpen = body.style.display !== 'none';
+                body.style.display = isOpen ? 'none' : 'block';
+                toggle.querySelector('.v2-stats-arrow').textContent = isOpen ? '▾' : '▴';
+            });
+        }
+    }
+
+    // ── 气泡图（纯 Canvas）──
+    function drawBubbleChart(cloudData) {
+        var canvas = document.getElementById('emotionCloudCanvas');
+        if (!canvas) return;
+
+        var bubbles = (cloudData && cloudData.bubbles) || [];
+        if (!bubbles.length) {
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ccc';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('暂无数据', canvas.width / 2, canvas.height / 2);
+            return;
+        }
+
+        var ctx = canvas.getContext('2d');
+        var w = canvas.width;
+        var h = canvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // 分两组：negative 偏左，positive 偏右
+        var negBubbles = bubbles.filter(function (b) { return b.group === 'negative'; });
+        var posBubbles = bubbles.filter(function (b) { return b.group !== 'negative'; });
+
+        // 计算布局：negative 在左半区，positive 在右半区
+        var centerX = w / 2;
+        var centerY = h / 2;
+        var maxR = 45;
+
+        // 在左右半区均匀分布
+        function layoutBubbles(bubbleList, xCenter, xSpread) {
+            var total = bubbleList.length;
+            if (total === 0) return;
+            var cols = Math.ceil(Math.sqrt(total));
+            var rows = Math.ceil(total / cols);
+            var spacingX = xSpread / Math.max(cols, 1);
+            var spacingY = (h - 40) / Math.max(rows, 1);
+
+            bubbleList.forEach(function (b, i) {
+                var col = i % cols;
+                var row = Math.floor(i / cols);
+                var r = Math.max(15, b.size * maxR);
+                var x = xCenter - xSpread / 2 + spacingX * col + spacingX / 2;
+                var y = 20 + spacingY * row + spacingY / 2;
+
+                // 绘制气泡
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fillStyle = b.color + '60'; // 半透明
+                ctx.fill();
+                ctx.strokeStyle = b.color;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // 情绪名
+                ctx.fillStyle = '#333';
+                ctx.font = Math.max(10, r * 0.5) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(b.emotion, x, y - 6);
+
+                // emoji
+                var emoji = EMOTION_NAMES[b.emotion] || '';
+                if (emoji) {
+                    ctx.font = Math.max(12, r * 0.45) + 'px sans-serif';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(emoji, x, y + r + 6);
+                }
+            });
+        }
+
+        layoutBubbles(negBubbles, w * 0.3, w * 0.45);
+        layoutBubbles(posBubbles, w * 0.7, w * 0.45);
+
+        // 分隔标签
+        ctx.fillStyle = '#999';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('负面', w * 0.2, h - 16);
+        ctx.fillText('正面', w * 0.8, h - 16);
+
+        // 中间的柔和分隔线
+        ctx.beginPath();
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(w / 2, 10);
+        ctx.lineTo(w / 2, h - 20);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // ── Helper ──
     function escapeHtml(str) {
         if (!str) return '';
         var div = document.createElement('div');
@@ -136,33 +260,10 @@
         return div.innerHTML;
     }
 
-    function renderEmotionChart(emotions) {
-        var canvas = document.getElementById('insightEmotionChart');
-        if (!canvas) return;
-        if (emotionChart) emotionChart.destroy();
-
-        var labels = Object.keys(emotions);
-        var values = Object.values(emotions);
-
-        if (!labels.length) {
-            canvas.parentElement.innerHTML = '<p class="empty-state">暂无情绪分布数据。🧪 试试侧边栏的测试工具，或者多和小绪聊几次</p>';
-            return;
-        }
-
-        emotionChart = new Chart(canvas, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length) }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'right', labels: { font: { size: 11 } } }
-                }
-            }
-        });
+    // ── 等页面加载完再执行 ──
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadV2);
+    } else {
+        loadV2();
     }
-
-    loadDashboard();
 })();
