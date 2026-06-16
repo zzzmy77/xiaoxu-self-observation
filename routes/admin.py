@@ -58,23 +58,15 @@ def seed_tool():
 
 
 @admin_bp.route("/seed", methods=["POST"])
+@login_required
 def seed_test_data():
-    """为当前 demo 用户生成测试数据。
+    """为当前用户生成测试数据。
 
-    生产环境调试工具，POST 时带上 ?level=light 指定等级。
+    需登录。POST 时带上 ?level=light 指定等级。
     等级: new / light (默认) / medium
-
-    用法:
-        curl -X POST https://your-app.railway.app/admin/seed?level=medium
     """
     level = request.args.get("level", "light")
-
-    # 只在生产环境或非 debug 模式下限制访问
-    from flask import current_app
-    if not current_app.debug and request.headers.get("X-Seed-Key") != "xiaoxu-dev-tool":
-        return jsonify({"error": "需要 X-Seed-Key 头或 DEBUG 模式"}), 403
-
-    user = User.get_or_create_default()
+    user = current_user
 
     from app import db
     # 清除旧数据

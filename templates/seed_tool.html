@@ -311,9 +311,13 @@
 
         fetch('/admin/seed?level=' + level, {
             method: 'POST',
-            headers: { 'X-Seed-Key': 'xiaoxu-dev-tool' },
         })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) {
+                return r.json().then(function(e) { throw new Error(e.error || '请求失败'); });
+            }
+            return r.json();
+        })
         .then(function(data) {
             bar.style.width = '100%';
             text.textContent = '完成！';
