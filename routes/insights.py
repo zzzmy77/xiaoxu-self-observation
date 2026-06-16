@@ -55,8 +55,12 @@ def insight_data():
         if draft and len(draft) > 10:
             self_insights.append({"text": draft, "date": m.created_at.isoformat() if m.created_at else ""})
 
-    # Emotion frequencies: use cognitive model data when available
-    emotion_freq = cm.get("情绪与心理健康趋势", {})
+    # Emotion frequencies: check profile first (seed factory stores here),
+    # then cognitive model, then raw message aggregation
+    profile = user.profile or {}
+    emotion_freq = profile.get("emotion_frequencies", {})
+    if not emotion_freq:
+        emotion_freq = cm.get("情绪与心理健康趋势", {})
     if not emotion_freq:
         # Fallback to raw message aggregation
         emotion_freq = dict(Counter(all_emotions))

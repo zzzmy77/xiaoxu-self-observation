@@ -22,11 +22,11 @@
 
             var emKeys = Object.keys(emotions);
             var emTotal = data.total_emotions || 0;
-            var topEm = emKeys.slice(0, 3).join(', ');
+            var topEm = emKeys.length ? emKeys.slice(0, 3).join(', ') : '暂无数据';
 
-            var topAttr = attributions.length ? attributions[0].text.slice(0, 40) : '暂无';
+            var topAttr = attributions.length ? attributions[0].text.slice(0, 40) : '暂无数据';
 
-            var lastInsight = insights.length ? insights[insights.length - 1].text.slice(0, 80) : '暂无';
+            var lastInsight = insights.length ? insights[insights.length - 1].text.slice(0, 80) : '暂无数据';
 
             // Build patterns section (legacy keyword-based)
             var patternsHtml = '';
@@ -145,7 +145,7 @@
         var values = Object.values(emotions);
 
         if (!labels.length) {
-            canvas.parentElement.innerHTML = '<p class="empty-state">还没有足够的情绪数据</p>';
+            canvas.parentElement.innerHTML = '<p class="empty-state">暂无情绪分布数据。🧪 试试侧边栏的测试工具，或者多和小绪聊几次</p>';
             return;
         }
 
