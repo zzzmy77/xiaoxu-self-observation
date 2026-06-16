@@ -79,13 +79,26 @@ def seed_test_data():
     from models.diary import Diary
     from models.monthly_summary import MonthlySummary
     from models.message import Message
+    from models.analytics import AnalyticsEvent
 
-    # 清除旧数据
+    # 清除旧数据（注意外键顺序：先删引用方，再删被引用方）
     old_sessions = Session.query.filter_by(user_id=user.id).all()
+    session_ids = [s.id for s in old_sessions]
+    
+    # 1. 删 analytics events（引用了 session_id）
+    if session_ids:
+        AnalyticsEvent.query.filter(AnalyticsEvent.session_id.in_(session_ids)).delete()
+    
+    # 2. 删 messages（引用了 session_id）
     for s in old_sessions:
         Message.query.filter_by(session_id=s.id).delete()
+    
+    # 3. 删 diaries、insights（引用了 session_id）
+    for s in old_sessions:
         Diary.query.filter_by(session_id=s.id).delete()
         Insight.query.filter_by(session_id=s.id).delete()
+    
+    # 4. 删 sessions 本身
     Session.query.filter_by(user_id=user.id).delete()
     MonthlySummary.query.filter_by(user_id=user.id).delete()
     db.session.commit()
