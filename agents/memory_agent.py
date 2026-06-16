@@ -114,7 +114,7 @@ class MemoryAgent(BaseAgent):
         user.cognitive_model = cm
         from app import db
         from sqlalchemy.orm.attributes import flag_modified
-        flag_modified(user, 'cognitive_model')
+        flag_modified(user, '_cognitive_model_raw')
         db.session.commit()
 
     # ─── D6: 情绪趋势 ───
