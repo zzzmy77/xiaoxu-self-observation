@@ -311,9 +311,15 @@
 
         fetch('/admin/seed?level=' + level, {
             method: 'POST',
+            credentials: 'same-origin',
         })
         .then(function(r) {
             if (!r.ok) {
+                // 检查响应是不是 HTML（登录页/404页）
+                var ct = r.headers.get('Content-Type') || '';
+                if (ct.indexOf('text/html') >= 0) {
+                    throw new Error('登录状态已过期，请刷新页面后重试');
+                }
                 return r.json().then(function(e) { throw new Error(e.error || '请求失败'); });
             }
             return r.json();
