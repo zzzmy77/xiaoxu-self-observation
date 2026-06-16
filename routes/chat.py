@@ -218,6 +218,14 @@ def _send_message_stream(message, session, user):
                     logger.error("Failed to save assistant message: %s", e)
                     db.session.rollback()
 
+            # ── MemoryAgent: 更新认知模型（情绪趋势、核心信念、关系网络等）──
+            try:
+                from agents.memory_agent import MemoryAgent
+                _mem = MemoryAgent()
+                _mem._update_cognitive_model(_fresh_user, _fresh_session, struct_meta, response_text)
+            except Exception as e:
+                logger.warning("MemoryAgent update failed: %s", e)
+
             # ── Unified analysis: one LLM call for both Insight (DB) + L2 display (SSE) ──
             if struct_meta and isinstance(struct_meta, dict):
                 stage = struct_meta.get("stage", "")

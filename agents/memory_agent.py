@@ -52,7 +52,7 @@ class MemoryAgent(BaseAgent):
         "我不配被爱": ["不配", "不值得", "我不好", "不够好"],
     }
 
-    def run(self, context: dict) -> dict:
+    def run(self, context: dict, save_messages: bool = True) -> dict:
         session = context.get("session")
         user = context.get("user")
         user_input = context.get("user_input", "")
@@ -64,9 +64,10 @@ class MemoryAgent(BaseAgent):
             return context
 
         try:
-            # Always save messages
-            session.add_message(role="user", content=user_input)
-            session.add_message(role="assistant", content=response_text, structured_meta=meta)
+            # Save messages (streaming path already saves them separately)
+            if save_messages:
+                session.add_message(role="user", content=user_input)
+                session.add_message(role="assistant", content=response_text, structured_meta=meta)
 
             # Update cognitive model after exploring mode conversations
             if mode == "exploring":
