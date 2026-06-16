@@ -4,6 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 
 from app import db
 from models.user import User
+from utils.experiments import assign_experiments
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
