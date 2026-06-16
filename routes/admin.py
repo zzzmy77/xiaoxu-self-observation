@@ -90,10 +90,11 @@ def seed_test_data():
     MonthlySummary.query.filter_by(user_id=user.id).delete()
     db.session.commit()
 
-    # ── 预设场景对话数据 ──
+    # ── 预设场景对话数据（含中文标题和富日记内容）──
     scenarios = [
         {
             "name": "workplace_injustice",
+            "title": "职场委屈·被批评后的觉察",
             "turns": [
                 ("user", "今天被老板骂了，明明不是我的错，他都不问清楚就下结论。"),
                 ("user", "他在群里@我说报告数据有问题，但我是照旧标准做的。"),
@@ -104,9 +105,11 @@ def seed_test_data():
             ],
             "emotions": ["委屈", "愤怒", "困惑", "沮丧", "觉察"],
             "attributions": ["被冤枉", "标准变更没通知", "被当众批评"],
+            "diary_narrative": f"<p>今天在工作中遇到了一件让我不太舒服的事。被老板在群里当众批评报告数据有问题，但我是按照旧标准做的。一开始觉得很委屈，明明不是我的错，他却没问清楚就下结论了。</p><p>和小绪聊完之后，我逐渐意识到让我难受的不是批评本身，而是被批评的方式——当众点名让我很没面子。我发现自己在工作中很在意被尊重的方式，这可能是因为我把别人的评价和自身的价值联系在了一起。</p><p>最后我想到，其实报告确实可以写得更详细一些。这件事让我学会了：以后要多主动确认标准是否更新，也要更清楚地表达自己的工作。</p>",
         },
         {
             "name": "learning_anxiety",
+            "title": "学习焦虑·比较中的自我迷失",
             "turns": [
                 ("user", "学不进去，好焦虑，感觉别人都比我进度快。"),
                 ("user", "我是不是太慢了，别人已经开始刷题了我还在看书。"),
@@ -116,9 +119,11 @@ def seed_test_data():
             ],
             "emotions": ["焦虑", "压力", "觉察", "放松"],
             "attributions": ["和同学对比进度", "害怕落后"],
+            "diary_narrative": f"<p>今天复习状态不太好。看到别人进度比我快，心里很焦虑，完全学不进去。</p><p>和小绪聊了之后，我发现这种焦虑不是因为我真的学不会，而是因为我在和别人比较。我害怕被落下，害怕落后。但仔细想想，每个人节奏不一样，我学到的还是我的，和谁比都没意义。</p><p>我需要少看别人的动态，把注意力放回自己身上。专注自己的节奏，才能走得远。</p>",
         },
         {
             "name": "identity_doubt",
+            "title": "滑雪与编程·评判模式的觉察",
             "turns": [
                 ("user", "我学滑雪的时候特别开心，因为没人在评判我，我只要去尝试就是好的。"),
                 ("user", "但对计算机不一样，我太习惯了用外部标准评判自己的水平。"),
@@ -129,6 +134,7 @@ def seed_test_data():
             ],
             "emotions": ["开心", "觉察", "焦虑", "自我怀疑", "放松"],
             "attributions": ["害怕被评判 → 先评判自己", "评判模式跨领域重复"],
+            "diary_narrative": f"<p>今天和小绪聊天，突然想通了一件事。我学滑雪的时候特别开心，因为作为初学者，我没有用任何标准来评判自己，觉得只要去尝试就是好的。那种沉浸式的体验让我很享受。</p><p>但对计算机不一样。我在这行太久了，总是在判断自己进度快不快、技能够不够熟练、在大部分人里是什么水平。我害怕被外界评判，所以先不断评判自己。这种模式让我很痛苦，甚至怀疑自己是不是适合这个行业。</p><p>不过我也想到了解法：不能只看一个点而忽略了其他点。所以我把健身和做美食加了进来，周末不学就做这两件事。我需要找回那种滑雪时的沉浸感，而不是一直活在外部的评判标准里。</p>",
         },
     ]
 
@@ -205,12 +211,16 @@ def seed_test_data():
             )
             db.session.add(ins)
 
-        # Diary
+        # Diary（用预设的丰富内容）
+        diary_text = scene.get("diary_narrative", "")
+        if not diary_text:
+            diary_text = f"<p>情绪：{'、'.join(list(set(session_emotions)))}</p>"
         d = Diary(
             user_id=user.id, session_id=s.id,
             date=(datetime.now(timezone.utc) - timedelta(days=session_idx)).date(),
-            title=f"第{session_idx+1}次·{scene['name']}",
-            content=f"<p>情绪：{'、'.join(list(set(session_emotions)))}</p>",
+            title=scene.get("title", f"第{session_idx+1}次对话"),
+            content=diary_text,
+            narrative=diary_text,
             emotion_tags=list(set(session_emotions)),
         )
         db.session.add(d)
