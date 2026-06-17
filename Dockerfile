@@ -12,6 +12,6 @@ COPY . .
 
 EXPOSE 5000
 
-# Use waitress as production WSGI server
+# Use waitress via Python entrypoint (avoids waitress-serve CLI expansion issues)
 # Railway sets PORT env var; default to 8080 if unset
-CMD ["sh", "-c", "waitress-serve --port=${PORT:-8080} app:application"]
+CMD ["python", "entrypoint.py"]
