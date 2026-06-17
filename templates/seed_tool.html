@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block content %}
 <div class="seed-tool-container">
     <div class="seed-tool-header">
@@ -61,20 +61,7 @@
         </div>
     </div>
 
-    <div class="seed-quick-tests">
-        <h3>⚡ 快速验证</h3>
-        <p class="seed-tool-desc">生成数据后，点击下面按钮跑一次对话验证。</p>
-        <button class="btn-test" id="btnTestMessage">💬 发条消息测试</button>
-        <button class="btn-test" id="btnTestStory">🎭 跑剧本 S001（滑雪 vs 编程）</button>
-    </div>
-
-    <div class="test-log" id="testLog" style="display:none;">
-        <div class="test-log-header">
-            <span>📋 测试日志</span>
-            <button class="btn-clear-log" id="btnClearLog">清空</button>
-        </div>
-        <div class="test-log-body" id="testLogBody"></div>
-    </div>
+    
 </div>
 
 <style>
@@ -210,82 +197,14 @@
 }
 .btn-action:hover { background: #e0e8f0; }
 
-.seed-quick-tests {
-    margin: 32px 0 16px;
-    padding-top: 24px;
-    border-top: 1px solid #e0e0e0;
-}
-.seed-quick-tests h3 { margin: 0 0 8px 0; }
-.btn-test {
-    background: #f0f4f8;
-    border: 1px solid #d0d8e0;
-    border-radius: 8px;
-    padding: 8px 16px;
-    margin-right: 8px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    font-size: 0.9em;
-    transition: all 0.2s;
-}
-.btn-test:hover {
-    background: #e0e8f0;
-    border-color: #5B8DB8;
-}
 
-.test-log {
-    margin-top: 16px;
-}
-.test-log-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-    margin-bottom: 8px;
-}
-.test-log-header span { font-weight: 600; font-size: 0.9em; }
-.btn-clear-log {
-    background: none;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 2px 8px;
-    cursor: pointer;
-    font-size: 0.8em;
-    color: #999;
-}
-.test-log-body {
-    max-height: 300px;
-    overflow-y: auto;
-    background: #fafafa;
-    border-radius: 8px;
-    padding: 12px;
-    font-family: monospace;
-    font-size: 0.85em;
-    line-height: 1.6;
-}
-.log-entry { margin-bottom: 4px; }
-.log-entry.ok { color: #2e7d32; }
-.log-entry.fail { color: #c62828; }
-.log-entry.info { color: #1565c0; }
 </style>
 
 <script>
 (function() {
     'use strict';
 
-    var logBody = document.getElementById('testLogBody');
-    var testLog = document.getElementById('testLog');
-
-    function log(type, text) {
-        testLog.style.display = 'block';
-        var entry = document.createElement('div');
-        entry.className = 'log-entry ' + type;
-        entry.textContent = '[' + new Date().toLocaleTimeString() + '] ' + text;
-        logBody.appendChild(entry);
-        logBody.scrollTop = logBody.scrollHeight;
-    }
-
-    // ── Seed buttons ──
+// ── Seed buttons ──
     document.querySelectorAll('.btn-seed').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var level = this.dataset.level;
@@ -307,7 +226,7 @@
         bar.style.width = '30%';
         text.textContent = '正在生成 ' + level + ' 级数据...';
 
-        log('info', '开始 seed: ' + level);
+
 
         fetch('/admin/seed?level=' + level, {
             method: 'POST',
@@ -346,8 +265,7 @@
                 '<div class="stat-item"><div class="stat-value">' + (stats.diaries || 0) +
                 '</div><div class="stat-label">日记</div></div>';
 
-            log('ok', level + ' 数据生成成功: ' + stats.messages + ' 条消息, ' +
-                stats.insights + ' 个洞察, ' + stats.diaries + ' 篇日记');
+
         })
         .catch(function(err) {
             bar.style.width = '100%';
@@ -359,101 +277,13 @@
             document.getElementById('resultTitle').textContent = '生成失败';
             document.getElementById('resultStats').innerHTML = '';
 
-            log('fail', 'seed 失败: ' + err.message);
+
         })
         .finally(function() {
             document.querySelectorAll('.btn-seed').forEach(function(b) { b.disabled = false; });
         });
     }
 
-    // ── Quick test: send message ──
-    document.getElementById('btnTestMessage').addEventListener('click', function() {
-        var btn = this;
-        btn.disabled = true;
-        log('info', '发送测试消息...');
-
-        fetch('/chat/api/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: '今天心情不太好，想找人聊聊' }),
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            var reply = data.response || '(空)';
-            var meta = data.structured_meta || {};
-            log('ok', 'AI 回复 (' + reply.length + ' 字符): ' + reply.slice(0, 80));
-            if (meta.emotion_tags && meta.emotion_tags.length) {
-                log('ok', '情绪识别: ' + meta.emotion_tags.join(', '));
-            }
-            if (meta.stage) {
-                log('ok', '阶段: ' + meta.stage);
-            }
-        })
-        .catch(function(err) {
-            log('fail', '发送失败: ' + err.message);
-        })
-        .finally(function() {
-            btn.disabled = false;
-        });
-    });
-
-    // ── Quick test: S001 story ──
-    document.getElementById('btnTestStory').addEventListener('click', function() {
-        var btn = this;
-        btn.disabled = true;
-        log('info', '开始多轮剧本 S001（滑雪 vs 编程）...');
-
-        var turns = [
-            "我突然想通了一件事。我学滑雪的时候特别开心，因为我是初学者，没有评判标准，只要去尝试就是好的。",
-            "但对计算机不一样。我在这行太久了，总是在判断自己进度快不快、技能够不够熟练。我害怕被外界评判，所以先不断评判自己。",
-            "有时候我会想我是不是根本不适合这个行业。",
-            "我想沉浸式搞好我的项目，但我害怕方向不对。没有对比和反馈，只有我一个人在搞。",
-            "我害怕闭门造车。特别是找实习的项目，我不知道方向对不对。",
-            "但我转念一想，我同学也有没找到工作的。我把精力全放这上面，它完全牵动着我的情绪。",
-            "所以我把健身和做美食加了进来。周末不学，就做这两件事。"
-        ];
-
-        function sendTurn(i) {
-            if (i >= turns.length) {
-                log('ok', '✅ 剧本 S001 完成！共 ' + turns.length + ' 轮');
-                btn.disabled = false;
-                return;
-            }
-
-            fetch('/chat/api/new', { method: 'POST' }).then(function() {
-                log('info', 'T' + (i+1) + ' 👤 ' + turns[i].slice(0, 30) + '...');
-
-                fetch('/chat/api/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: turns[i] }),
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    var reply = data.response || '';
-                    var meta = data.structured_meta || {};
-                    log('ok', 'T' + (i+1) + ' 🤖 [' + (meta.stage || '?') + '] ' +
-                        reply.slice(0, 50) + '...');
-                    if (meta.emotion_tags && meta.emotion_tags.length) {
-                        log('info', '   情绪: ' + meta.emotion_tags.join(', '));
-                    }
-                    sendTurn(i + 1);
-                })
-                .catch(function(err) {
-                    log('fail', 'T' + (i+1) + ' 失败: ' + err.message);
-                    btn.disabled = false;
-                });
-            });
-        }
-
-        sendTurn(0);
-    });
-
-    // ── Clear log ──
-    document.getElementById('btnClearLog').addEventListener('click', function() {
-        logBody.innerHTML = '';
-        testLog.style.display = 'none';
-    });
 })();
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -44,9 +44,7 @@
                 <a href="{{ url_for('profile.index') }}" class="nav-item{% if request.path.startswith('/profile') %} active{% endif %}">
                     <span class="nav-icon">👤</span> 我的
                 </a>
-                <a href="{{ url_for('admin.seed_tool') }}" class="nav-item{% if request.path.startswith('/admin/seed-tool') %} active{% endif %}">
-                    <span class="nav-icon">🧪</span> 测试工具
-                </a>
+                <!-- 测试工具入口已隐藏（正式版本） -->
             </nav>
             <div class="sidebar-footer">
                 <span class="mode-badge" id="modeBadge">
