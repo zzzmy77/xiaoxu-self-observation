@@ -13,4 +13,5 @@ COPY . .
 EXPOSE 5000
 
 # Use waitress as production WSGI server
-CMD waitress-serve --port=$PORT app:application
+# Railway sets PORT env var; default to 8080 if unset
+CMD ["sh", "-c", "waitress-serve --port=${PORT:-8080} app:application"]
