@@ -5,7 +5,7 @@
     // ── 归因文本质量过滤 ──
     function isValidAttribution(text) {
         if (!text || text.length < 4) return false;
-        var generic = ['用户','外部','内部','自己','别人','他人','环境','社会','家庭','工作','学习','生活','性格','情绪','压力'];
+        var generic = ['用户','外部','内部','自己','别人','他人','环境','社会','家庭','工作','学习','生活','性格','情绪','压力','user','assistant','system','role','content'];
         if (generic.indexOf(text) !== -1) return false;
         return true;
     }
