@@ -4,6 +4,9 @@ from flask_login import current_user, login_required
 
 from app import db
 from models.user import User
+from models.session import Session
+from models.insight import Insight
+from models.message import Message
 
 profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
 
@@ -20,6 +23,25 @@ def index():
 def api():
     user = current_user
     return jsonify(user.to_dict())
+
+
+@profile_bp.route("/api/stats")
+def stats():
+    user = current_user
+    total_sessions = Session.query.filter_by(user_id=user.id).count()
+    total_insights = Insight.query.filter_by(user_id=user.id).count()
+    total_emotions = (
+        Message.query
+        .join(Session, Message.session_id == Session.id)
+        .filter(Session.user_id == user.id)
+        .filter(Message.role == "assistant")
+        .count()
+    )
+    return jsonify({
+        "total_sessions": total_sessions,
+        "total_insights": total_insights,
+        "total_emotions": total_emotions,
+    })
 
 
 @profile_bp.route("/api/update", methods=["POST"])

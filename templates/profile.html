@@ -125,6 +125,16 @@
     document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
     document.getElementById('saveModeBtn').addEventListener('click', saveMode);
 
+    // Load stats from DB
+    fetch('/profile/api/stats')
+        .then(function(r) { return r.json(); })
+        .then(function(s) {
+            var sc = document.getElementById('sessionCount');
+            var ic = document.getElementById('insightCount');
+            if (sc) sc.textContent = s.total_sessions;
+            if (ic) ic.textContent = s.total_insights;
+        });
+
     // Load emotion cloud from insight API
     fetch('/insights/api/data')
         .then(function(r) { return r.json(); })
