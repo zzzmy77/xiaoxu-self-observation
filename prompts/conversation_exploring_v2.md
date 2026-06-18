@@ -34,7 +34,7 @@
 ## Fields
 - emotion_tags: 识别到的情绪标签（1-3个）
 - emotion_intensity: 情绪强度 1-5
-- attribution: 用户归因的内容（如果有发现）
+- attribution: 用户归因的内容。尽力从用户的话里提取具体原因/根源（6-20字）。例如「被老板否定方案」「和同事比较进度」「担心考试考不好」。不要只写「工作」「压力」「自己」这种泛词
 - stage: 当前阶段 empathy / attribution / challenge / closure
 - absolutist_detected: 检测到的绝对化用词（如"总是""每次"）
 - insight_draft: closure阶段填写的洞察总结
