@@ -353,7 +353,48 @@
         }
     })();
 
+    // ── 日记分页加载 ──
+    var _diaryPageSize = 7;
+    var _diaryVisible = 0;
+
+    function initDiaryPagination() {
+        var cards = document.querySelectorAll('.diary-card');
+        var btn = document.getElementById('btnLoadMoreDiaries');
+        var countSpan = document.getElementById('loadMoreCount');
+        if (!cards.length || !btn) return;
+
+        _diaryVisible = Math.min(_diaryPageSize, cards.length);
+
+        // Hide all, then show first N
+        cards.forEach(function (c, i) {
+            c.style.display = i < _diaryVisible ? 'block' : 'none';
+        });
+
+        updateLoadMoreBtn(btn, countSpan, cards.length);
+
+        btn.addEventListener('click', function () {
+            var next = _diaryVisible + _diaryPageSize;
+            for (var i = _diaryVisible; i < next && i < cards.length; i++) {
+                cards[i].style.display = 'block';
+            }
+            _diaryVisible = next;
+            updateLoadMoreBtn(btn, countSpan, cards.length);
+        });
+    }
+
+    function updateLoadMoreBtn(btn, countSpan, total) {
+        if (_diaryVisible >= total) {
+            btn.style.display = 'none';
+        } else {
+            btn.style.display = 'inline-block';
+            var remaining = total - _diaryVisible;
+            var nextBatch = Math.min(remaining, _diaryPageSize);
+            btn.textContent = '加载更多（还可加载 ' + remaining + ' 条）';
+        }
+    }
+
     // ── Init ──
     var today = new Date();
     renderCalendar(today.getFullYear(), today.getMonth());
+    initDiaryPagination();
 })();

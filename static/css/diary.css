@@ -582,3 +582,16 @@
 .event-time { width: 80px; color: var(--text-light); flex-shrink: 0; }
 .event-name { width: 120px; font-weight: 600; flex-shrink: 0; }
 .event-props { color: var(--text-light); overflow: hidden; text-overflow: ellipsis; }
+
+/* 分页加载 */
+.load-more-wrap { text-align: center; padding: 16px 0; }
+.btn-load-more {
+    display: inline-block; padding: 8px 28px;
+    border: 1px solid #ddd; border-radius: 20px;
+    background: #fff; color: #666; font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+}
+.btn-load-more:hover {
+    background: #f5f5f5; border-color: #bbb;
+    color: #333;
+}
