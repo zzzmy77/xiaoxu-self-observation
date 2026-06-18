@@ -4,7 +4,7 @@
 
     // ── 归因文本质量过滤 ──
     function isValidAttribution(text) {
-        if (!text || text.length < 4) return false;
+        if (!text || text.length < 3) return false;
         var generic = ['用户','外部','内部','自己','别人','他人','环境','社会','家庭','工作','学习','生活','性格','情绪','压力','user','assistant','system','role','content'];
         if (generic.indexOf(text) !== -1) return false;
         return true;
@@ -156,9 +156,14 @@
             }
         }
 
-        // ── attribution 变化时追加关键节点（过短/泛词跳过） ──
-        if (isValidAttribution(attribution) && (!last || last.attribution !== attribution)) {
-            addKeyNode(attribution);
+        // ── attribution 变化 / 情绪变化时追加关键节点 ──
+        var attrToUse = attribution;
+        // 兜底：LLM 没给归因但有情绪时，用情绪+简短描述
+        if (!isValidAttribution(attrToUse) && emotions.length > 0) {
+            attrToUse = emotions[0] + '情绪';
+        }
+        if (isValidAttribution(attrToUse) && (!last || last.attribution !== attrToUse)) {
+            addKeyNode(attrToUse);
         }
 
         // ── 更新一句话洞察 ──
