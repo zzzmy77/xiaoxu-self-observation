@@ -140,7 +140,7 @@
         var bubbles = (cloudData && cloudData.bubbles) || [];
         if (!bubbles.length) {
             var ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ccc';
+            ctx.fillStyle = '#B0A090';
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('暂无数据', canvas.width / 2, canvas.height / 2);
@@ -187,8 +187,8 @@
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                // 情绪名
-                ctx.fillStyle = '#333';
+                // 情绪名（温和棕色）
+                ctx.fillStyle = '#5D4E37';
                 ctx.font = Math.max(10, r * 0.5) + 'px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -208,7 +208,7 @@
         layoutBubbles(posBubbles, w * 0.7, w * 0.45);
 
         // 分隔标签
-        ctx.fillStyle = '#999';
+        ctx.fillStyle = '#B8A898';
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
@@ -217,7 +217,7 @@
 
         // 中间的柔和分隔线
         ctx.beginPath();
-        ctx.strokeStyle = '#e0e0e0';
+        ctx.strokeStyle = '#D8D0C8';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         ctx.moveTo(w / 2, 10);
