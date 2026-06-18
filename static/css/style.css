@@ -1112,3 +1112,16 @@ body {
     }
     .dashboard-grid { grid-template-columns: 1fr; }
 }
+
+/* 阶段温馨文案 */
+.stage-warm-msg {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #F0F7EE;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #5D7C4E;
+    line-height: 1.5;
+    text-align: center;
+}

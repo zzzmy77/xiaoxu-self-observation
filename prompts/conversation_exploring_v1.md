@@ -34,6 +34,7 @@
 - absolutist_detected: 检测到的绝对化用词（如"总是""每次"）
 - insight_draft: closure阶段填写的洞察总结
 - pattern_hint: 如果发现和历史话题有关联，填简要提示
+- stage_message: 基于当前阶段和用户刚才说的内容，写一句温暖的回应，让用户感到被接住（10-20字）
 
 ## Boundaries
 - 不做诊断（不说"你可能有XX问题"）

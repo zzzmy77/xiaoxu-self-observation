@@ -73,6 +73,7 @@
     var patternText = document.getElementById('patternText');
     var tipSection = document.getElementById('tipSection');
     var tipText = document.getElementById('tipText');
+    var stageMessage = document.getElementById('stageMessage');
 
     // ── 新增面板元素 ──
     var currentEmotionSection = document.getElementById('currentEmotionSection');
@@ -179,6 +180,19 @@
         if (stage && stage !== lastStage) {
             lastStage = stage;
         }
+
+        // ── 阶段温馨文案 ──
+        (function() {
+            var stageMsg = meta.stage_message || '';
+            if (stageMsg && stageMessage) {
+                stageMessage.textContent = '💬 ' + stageMsg;
+                stageMessage.style.display = 'block';
+            } else if (stage && stageMessage && !stageMessage.textContent) {
+                var fbs = {'empathy':'我在这里陪着你，慢慢说','attribution':'你已经开始理解自己了','challenge':'换个角度看看，也许有新的发现','closure':'今天的觉察，都在帮你更了解自己'};
+                stageMessage.textContent = '💬 ' + (fbs[stage] || '');
+                stageMessage.style.display = 'block';
+            }
+        })();
 
         // 如果已到 closure 阶段,异步触发 L3
         if (stage === 'closure') {
@@ -414,6 +428,7 @@
                 tipVisible: tipSection ? tipSection.style.display === 'block' : false,
                 tipText: tipText ? tipText.textContent : '',
                 emotionSummary: emotionSummaryEl ? emotionSummaryEl.textContent : '',
+                stageMessage: stageMessage ? stageMessage.textContent : '',
             };
             localStorage.setItem(PANEL_STORAGE_KEY, JSON.stringify(state));
         } catch (e) {
@@ -512,6 +527,11 @@
             // 恢复情绪曲线
             if (state.emotionSummary) {
                 emotionSummaryEl.textContent = state.emotionSummary;
+            }
+            // 恢复阶段文案
+            if (state.stageMessage && stageMessage) {
+                stageMessage.textContent = state.stageMessage;
+                stageMessage.style.display = 'block';
             }
             if (emotionHistory.length > 0) {
                 drawEmotionCurve();
