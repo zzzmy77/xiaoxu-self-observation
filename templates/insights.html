@@ -35,13 +35,6 @@
     <!-- Historical insight list -->
     <div class="insight-list">
         <h3>📖 历史洞察记录</h3>
-        <div class="time-filter">
-            <span class="time-filter-label">时间：</span>
-            <a href="?days=0" class="filter-btn{% if selected_days == 0 %} active{% endif %}">全部</a>
-            <a href="?days=7" class="filter-btn{% if selected_days == 7 %} active{% endif %}">近7天</a>
-            <a href="?days=30" class="filter-btn{% if selected_days == 30 %} active{% endif %}">近30天</a>
-            <a href="?days=90" class="filter-btn{% if selected_days == 90 %} active{% endif %}">近90天</a>
-        </div>
         {% if insights %}
             {% for insight in insights %}
                 <div class="insight-card" data-date="{{ insight.created_at.date().isoformat() if insight.created_at else '' }}">
@@ -151,12 +144,7 @@
     padding: 4px 0;
 }
 
-/* 时间筛选 */
-.time-filter {
-    display: flex; align-items: center; gap: 8px;
-    margin: 12px 0 16px 0;
-}
-.time-filter-label { font-size: 13px; color: #999; }
+/* filter-btn 保留（清除筛选按钮用） */
 .filter-btn {
     padding: 4px 14px; border-radius: 20px;
     font-size: 13px; color: #666;

@@ -1,6 +1,6 @@
 """Insights routes — cross-session analysis."""
 import json
-from datetime import datetime, timezone, timedelta, date
+from datetime import date
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import current_user, login_required
 from collections import Counter
@@ -17,15 +17,11 @@ insights_bp = Blueprint("insights", __name__, url_prefix="/insights")
 @login_required
 def index():
     user = current_user
-    days = request.args.get("days", 0, type=int)
-
-    query = Insight.query.filter_by(user_id=user.id)
-    if days > 0:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        query = query.filter(Insight.created_at >= cutoff)
-
-    insights = query.order_by(Insight.created_at.desc()).all()
-    return render_template("insights.html", user=user, insights=insights, selected_days=days)
+    insights = (Insight.query
+                .filter_by(user_id=user.id)
+                .order_by(Insight.created_at.desc())
+                .all())
+    return render_template("insights.html", user=user, insights=insights)
 
 
 # ── Calendar API ──
