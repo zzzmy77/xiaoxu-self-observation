@@ -185,13 +185,17 @@
                 var x = xCenter - xSpread / 2 + spacingX * col + spacingX / 2;
                 var y = 20 + spacingY * row + spacingY / 2;
 
-                // 绘制气泡
+                // 绘制气泡（径向渐变，半透明大自然色）
+                var grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 2, x, y, r);
+                grad.addColorStop(0, b.color + 'CC');
+                grad.addColorStop(0.7, b.color + '88');
+                grad.addColorStop(1, b.color + '55');
                 ctx.beginPath();
                 ctx.arc(x, y, r, 0, Math.PI * 2);
-                ctx.fillStyle = b.color + '60'; // 半透明
+                ctx.fillStyle = grad;
                 ctx.fill();
-                ctx.strokeStyle = b.color;
-                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = b.color + '99';
+                ctx.lineWidth = 1.2;
                 ctx.stroke();
 
                 // 情绪名（温和棕色）
