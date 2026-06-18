@@ -182,10 +182,14 @@
             intensityChange.className = 'intensity-change negative';
         }
 
-        // ── 归因浮现（过短/泛词跳过） ──
-        if (isValidAttribution(attribution) && (!last || last.attribution !== attribution)) {
+        // ── 归因浮现（含兜底） ──
+        var displayAttr = attribution;
+        if (!isValidAttribution(displayAttr) && emotions.length > 0) {
+            displayAttr = emotions[0] + '情绪';
+        }
+        if (isValidAttribution(displayAttr) && (!last || last.attribution !== displayAttr)) {
             attributionSection.style.display = 'block';
-            attributionText.textContent = attribution;
+            attributionText.textContent = displayAttr;
             attributionCard.style.display = 'flex';
         }
 
