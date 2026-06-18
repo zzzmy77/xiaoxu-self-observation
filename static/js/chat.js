@@ -204,7 +204,7 @@
             if (stageMsg && stageMessage) {
                 stageMessage.textContent = '💬 ' + stageMsg;
                 stageMessage.style.display = 'block';
-            } else if (stage && stageMessage && !stageMessage.textContent) {
+            } else if (stage && stageMessage && stage !== lastStage) {
                 var fbs = {'empathy':'我在这里陪着你，慢慢说','attribution':'你已经开始理解自己了','challenge':'换个角度看看，也许有新的发现','closure':'今天的觉察，都在帮你更了解自己'};
                 stageMessage.textContent = '💬 ' + (fbs[stage] || '');
                 stageMessage.style.display = 'block';
@@ -224,11 +224,13 @@
     var stageDots = document.querySelectorAll('.stage-dot');
     function updateStageDots(stage) {
         if (!stageDots.length) return;
-        var activated = false;
+        var order = ['empathy','attribution','challenge','closure'];
+        var idx = order.indexOf(stage);
+        if (idx === -1) return;
         stageDots.forEach(function (dot) {
-            if (dot.dataset.stage === stage) {
+            var dotIdx = order.indexOf(dot.dataset.stage);
+            if (dotIdx >= 0 && dotIdx <= idx) {
                 dot.classList.add('active');
-                activated = true;
             }
         });
     }

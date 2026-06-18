@@ -41,7 +41,14 @@
 - emotion_tags: 识别到的情绪标签（1-3个）
 - emotion_intensity: 情绪强度 1-5
 - attribution: 用户归因的内容。尽力从用户的话里提取具体原因/根源（3-15字即可，不用太长）。例如「被老板否定方案」「和同事比较进度」「担心考试考不好」。不要只写「工作」「压力」「自己」这种泛词
-- stage: 当前阶段 empathy / attribution / challenge / closure
+
+- stage: 当前阶段，**每轮都必须填写**，不能为空
+  阶段推进规则：
+  - empathy（共情）: 用户刚开始分享时，先倾听共情
+  - attribution（归因）: 当用户开始解释原因/根源时，切换到归因阶段
+  - challenge（挑战）: 归因明确后，温和提供新视角。**当对话超过4轮且已找到归因时，必须推进到challenge**
+  - closure（收束）: 对话自然结束或用户收尾时，切换到收束阶段做总结
+
 - absolutist_detected: 检测到的绝对化用词（如"总是""每次"）
 - insight_draft: closure阶段填写的洞察总结
 - pattern_hint: 如果发现和历史话题有关联，填简要提示
