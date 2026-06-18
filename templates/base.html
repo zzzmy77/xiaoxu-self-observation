@@ -38,9 +38,6 @@
                 <a href="{{ url_for('diaries.index') }}" class="nav-item{% if request.path.startswith('/diaries') %} active{% endif %}">
                     <span class="nav-icon">📖</span> 日记
                 </a>
-                <a href="{{ url_for('monthly.index') }}" class="nav-item{% if request.path.startswith('/monthly') %} active{% endif %}">
-                    <span class="nav-icon">📊</span> 月报
-                </a>
                 <a href="{{ url_for('profile.index') }}" class="nav-item{% if request.path.startswith('/profile') %} active{% endif %}">
                     <span class="nav-icon">👤</span> 我的
                 </a>
