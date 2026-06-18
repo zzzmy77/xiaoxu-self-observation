@@ -293,6 +293,100 @@ def new_session():
     return jsonify({"session_id": session.id, "redirect": "/chat"})
 
 
+@chat_bp.route("/api/today-panel")
+@login_required
+def today_panel():
+    """Return today's aggregated perception panel data (since 5 AM BJT)."""
+    from datetime import datetime, timedelta, timezone
+    from models.message import Message
+    import logging
+    logger = logging.getLogger(__name__)
+
+    user = current_user
+
+    # 5 AM today BJT
+    bj_now = datetime.now(timezone.utc) + timedelta(hours=8)
+    cutoff_bj = bj_now.replace(hour=5, minute=0, second=0, microsecond=0)
+    cutoff_utc = cutoff_bj - timedelta(hours=8)
+
+    sessions = Session.query.filter(
+        Session.user_id == user.id,
+        Session.created_at >= cutoff_utc,
+    ).all()
+    session_ids = [s.id for s in sessions]
+
+    if not session_ids:
+        return jsonify({"has_data": False})
+
+    msgs = (Message.query
+            .filter(Message.session_id.in_(session_ids))
+            .filter(Message.role == "assistant")
+            .order_by(Message.created_at.asc())
+            .all())
+
+    emotion_history = []
+    last_stage = ""
+    all_attributions = []
+    has_any_emotion = False
+
+    for m in msgs:
+        meta = m.structured_meta or {}
+        emotions = meta.get("emotion_tags", [])
+        intensity = meta.get("emotion_intensity", 0)
+        attribution = meta.get("attribution", "")
+        stage = meta.get("stage", "")
+
+        if emotions and intensity:
+            emotion_history.append({
+                "emotion": emotions[0],
+                "intensity": intensity,
+                "attribution": attribution,
+                "stage": stage,
+            })
+            has_any_emotion = True
+
+        if attribution and len(attribution) > 3:
+            if attribution not in all_attributions:
+                all_attributions.append(attribution)
+
+        if stage:
+            last_stage = stage
+
+    # Simple emotion summary
+    emotion_summary = ""
+    if emotion_history:
+        first = emotion_history[0]
+        last = emotion_history[-1]
+        direction = "↑" if last["intensity"] > first["intensity"] else "↓" if last["intensity"] < first["intensity"] else "→"
+        emotion_summary = f"{first['emotion']}(强度{first['intensity']}) → {last['emotion']}(强度{last['intensity']}) {direction}"
+
+    # Intensity change
+    intensity_change = ""
+    if len(emotion_history) >= 2:
+        first_int = emotion_history[0]["intensity"]
+        last_int = emotion_history[-1]["intensity"]
+        if last_int - first_int >= 2:
+            intensity_change = "↑ 强度增加"
+            intensity_class = "negative"
+        elif first_int - last_int >= 2:
+            intensity_change = "↓ 有所缓解"
+            intensity_class = "positive"
+        else:
+            intensity_change = "— 强度平稳"
+            intensity_class = ""
+
+    return jsonify({
+        "has_data": has_any_emotion,
+        "emotion_history": emotion_history,
+        "turn_count": len(emotion_history),
+        "last_stage": last_stage,
+        "key_nodes": all_attributions[-5:],
+        "emotion_summary": emotion_summary,
+        "intensity_change": intensity_change,
+        "intensity_class": intensity_class or "",
+    })
+
+
 @chat_bp.route("/api/analyze", methods=["POST"])
 @login_required
 def analyze_session():
