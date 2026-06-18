@@ -2,14 +2,6 @@
 (function () {
     'use strict';
 
-    var EMOTION_NAMES = {
-        '焦虑': '😰', '压力': '😣', '委屈': '🥺', '愤怒': '😠',
-        '沮丧': '😞', '无力': '😩', '失落': '😿', '不安': '😥',
-        '悲伤': '😢', '自我怀疑': '🤨', '烦躁': '😤', '恐惧': '😨',
-        '困惑': '🤔', '开心': '😊', '放松': '😌', '觉察': '💡',
-        '思考': '🧐', '自豪': '🎉',
-    };
-
     // ── 主入口 ──
     function loadV2() {
         var container = document.querySelector('.insights-container');
@@ -132,7 +124,20 @@
         initInsightCalendar();
     }
 
-    // ── 气泡图（纯 Canvas）──
+    // ── 气泡图（大自然色系，按频率展示）──
+    var NATURE_COLORS = [
+        '#A8D5BA',  // 浅草绿
+        '#7EC8E3',  // 天空蓝
+        '#F5E6A3',  // 淡黄
+        '#C8E6C9',  // 嫩绿
+        '#B3D9F2',  // 浅天蓝
+        '#FFF3B0',  // 奶油黄
+        '#A5D6A7',  // 薄荷绿
+        '#90CAF9',  // 晴空蓝
+        '#FFE082',  // 暖阳黄
+        '#81C784',  // 青草绿
+    ];
+
     function drawBubbleChart(cloudData) {
         var canvas = document.getElementById('emotionCloudCanvas');
         if (!canvas) return;
@@ -153,77 +158,82 @@
 
         ctx.clearRect(0, 0, w, h);
 
-        // 分两组：negative 偏左，positive 偏右
-        var negBubbles = bubbles.filter(function (b) { return b.group === 'negative'; });
-        var posBubbles = bubbles.filter(function (b) { return b.group !== 'negative'; });
+        // 按频率（size）降序排列，频率高的放中间
+        var sorted = bubbles.slice().sort(function (a, b) { return b.size - a.size; });
 
-        // 计算布局：negative 在左半区，positive 在右半区
-        var centerX = w / 2;
-        var centerY = h / 2;
-        var maxR = 45;
+        // 更小的最大半径，避免气泡过大
+        var maxR = 28;
+        var minR = 14;
 
-        // 在左右半区均匀分布
-        function layoutBubbles(bubbleList, xCenter, xSpread) {
-            var total = bubbleList.length;
-            if (total === 0) return;
-            var cols = Math.ceil(Math.sqrt(total));
-            var rows = Math.ceil(total / cols);
-            var spacingX = xSpread / Math.max(cols, 1);
-            var spacingY = (h - 40) / Math.max(rows, 1);
+        // 自然散落布局：频率最高的靠近中心，其他围绕散开
+        var cols = Math.min(sorted.length, Math.ceil(Math.sqrt(sorted.length * 2)));
+        var rows = Math.ceil(sorted.length / cols);
 
-            bubbleList.forEach(function (b, i) {
-                var col = i % cols;
-                var row = Math.floor(i / cols);
-                var r = Math.max(15, b.size * maxR);
-                var x = xCenter - xSpread / 2 + spacingX * col + spacingX / 2;
-                var y = 20 + spacingY * row + spacingY / 2;
+        // 高频 (top 1-2) 居中放大
+        var topN = Math.min(2, sorted.length);
+        var rest = sorted.slice(topN);
 
-                // 绘制气泡
-                ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI * 2);
-                ctx.fillStyle = b.color + '60'; // 半透明
-                ctx.fill();
-                ctx.strokeStyle = b.color;
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-
-                // 情绪名（温和棕色）
-                ctx.fillStyle = '#5D4E37';
-                ctx.font = Math.max(10, r * 0.5) + 'px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(b.emotion, x, y - 6);
-
-                // emoji
-                var emoji = EMOTION_NAMES[b.emotion] || '';
-                if (emoji) {
-                    ctx.font = Math.max(12, r * 0.45) + 'px sans-serif';
-                    ctx.textBaseline = 'bottom';
-                    ctx.fillText(emoji, x, y + r + 6);
-                }
-            });
+        // 绘制高频中心气泡
+        for (var t = 0; t < topN; t++) {
+            var b = sorted[t];
+            var r = Math.max(minR, Math.min(maxR, b.size * maxR));
+            // 居中对齐，偏移少许
+            var cx = w * (t === 0 ? 0.5 : (topN > 1 ? 0.35 : 0.5));
+            if (t === 1 && topN > 1) cx = w * 0.65;
+            var cy = h * 0.4;
+            if (t === 1) cy = h * 0.45;
+            drawBubble(ctx, b, cx, cy, r);
         }
 
-        layoutBubbles(negBubbles, w * 0.3, w * 0.45);
-        layoutBubbles(posBubbles, w * 0.7, w * 0.45);
+        // 绘制其余气泡：网格散布在空白区域
+        if (rest.length > 0) {
+            var padX = 30;
+            var padY = 20;
+            var gridW = w - padX * 2;
+            var gridH = h - padY - 20;
+            var restCols = Math.min(rest.length, Math.ceil(Math.sqrt(rest.length * 1.5)));
+            var restRows = Math.ceil(rest.length / restCols);
+            var cellW = gridW / restCols;
+            var cellH = gridH / restRows;
 
-        // 分隔标签
-        ctx.fillStyle = '#B8A898';
-        ctx.font = '11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText('负面', w * 0.2, h - 16);
-        ctx.fillText('正面', w * 0.8, h - 16);
+            for (var i = 0; i < rest.length; i++) {
+                var b2 = rest[i];
+                var col = i % restCols;
+                var row = Math.floor(i / restCols);
+                var r2 = Math.max(minR - 2, Math.min(maxR - 4, b2.size * (maxR - 4)));
+                var cx2 = padX + cellW * col + cellW / 2;
+                var cy2 = padY + cellH * row + cellH / 2;
+                drawBubble(ctx, b2, cx2, cy2, r2);
+            }
+        }
+    }
 
-        // 中间的柔和分隔线
+    function drawBubble(ctx, b, x, y, r) {
+        // 自然色系随机选取
+        var colorIdx = Math.floor(Math.random() * NATURE_COLORS.length);
+        var baseColor = NATURE_COLORS[colorIdx];
+
+        // 绘制气泡（半透明填充+实线边框）
         ctx.beginPath();
-        ctx.strokeStyle = '#D8D0C8';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.moveTo(w / 2, 10);
-        ctx.lineTo(w / 2, h - 20);
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = baseColor + '90';
+        ctx.fill();
+        ctx.strokeStyle = baseColor;
+        ctx.lineWidth = 1.2;
         ctx.stroke();
-        ctx.setLineDash([]);
+
+        // 淡淡光晕
+        ctx.beginPath();
+        ctx.arc(x - r * 0.2, y - r * 0.2, r * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fill();
+
+        // 情绪文字（深棕色）
+        ctx.fillStyle = '#3D3028';
+        ctx.font = 'bold ' + Math.max(10, r * 0.55) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.emotion, x, y - 2);
     }
 
     // ── 日历 ──
