@@ -1,7 +1,7 @@
 """Diary routes — calendar, listing, CRUD."""
 import json
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 from flask import Blueprint, render_template, jsonify, request
 from utils.timezone import today_bjt
 from flask_login import current_user, login_required
