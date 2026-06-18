@@ -85,6 +85,8 @@
 
         detail.style.display = 'block';
         title.textContent = dateStr;
+        diariesDiv.innerHTML = '<p class="empty-state">加载中...</p>';
+        insightsDiv.innerHTML = '';
 
         fetch('/diaries/api/day/' + parts[0] + '/' + parts[1] + '/' + parts[2])
             .then(function (r) { return r.json(); })
@@ -92,13 +94,15 @@
                 diariesDiv.innerHTML = '';
                 insightsDiv.innerHTML = '';
 
-                if (data.diaries.length) {
+                if (data.diaries && data.diaries.length) {
                     diariesDiv.innerHTML = '<h4>📖 日记</h4>';
                     data.diaries.forEach(function (d) {
                         var card = document.createElement('div');
                         card.className = 'mini-card';
-                        card.innerHTML = '<strong>' + d.title + '</strong>'
-                            + '<p>' + d.content.slice(0, 100) + '...</p>'
+                        var contentPreview = (d.narrative || d.content || '').slice(0, 100);
+                        if (!contentPreview) contentPreview = '暂无内容';
+                        card.innerHTML = '<strong>' + (d.title || '无标题') + '</strong>'
+                            + '<p>' + contentPreview + '...</p>'
                             + '<div class="mini-card-actions">'
                             + '<button class="btn-edit-diary" data-id="' + d.id + '">查看</button>'
                             + '<button class="btn-delete-diary" data-id="' + d.id + '">删除</button>'
@@ -106,18 +110,24 @@
                         diariesDiv.appendChild(card);
                     });
                 }
-                if (data.insights.length) {
+                if (data.insights && data.insights.length) {
                     insightsDiv.innerHTML = '<h4>🔍 洞察</h4>';
                     data.insights.forEach(function (i) {
                         var card = document.createElement('div');
                         card.className = 'mini-card';
-                        card.innerHTML = '<p>' + i.insight_text.slice(0, 100) + '...</p>';
+                        var text = (i.insight_text || '').slice(0, 100) || '暂无摘要';
+                        card.innerHTML = '<p>' + text + '...</p>';
                         insightsDiv.appendChild(card);
                     });
                 }
-                if (!data.diaries.length && !data.insights.length) {
-                    diariesDiv.innerHTML = '<p class="empty-state">这一天没有记录</p>';
+                if (!data.diaries || !data.diaries.length) {
+                    if (!data.insights || !data.insights.length) {
+                        diariesDiv.innerHTML = '<p class="empty-state">这一天没有记录</p>';
+                    }
                 }
+            })
+            .catch(function () {
+                diariesDiv.innerHTML = '<p class="empty-state">加载失败，请重试</p>';
             });
     }
 
