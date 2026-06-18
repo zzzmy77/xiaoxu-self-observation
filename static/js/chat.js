@@ -915,4 +915,112 @@
             })
             .catch(function () { /* ignore */ });
     }
+
+    // ── 语音模块 ──
+    var voiceBtn = document.getElementById('voiceBtn');
+    var ttsToggle = document.getElementById('ttsToggle');
+    var recognition = null;
+    var isRecording = false;
+
+    // 初始化语音识别
+    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition && voiceBtn) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'zh-CN';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        voiceBtn.addEventListener('click', function () {
+            if (isRecording) {
+                recognition.stop();
+                return;
+            }
+            isRecording = true;
+            voiceBtn.classList.add('recording');
+            voiceBtn.textContent = '⏺';
+            recognition.start();
+        });
+
+        recognition.onresult = function (e) {
+            var text = e.results[0][0].transcript;
+            var input = document.getElementById('messageInput');
+            if (input) {
+                input.value = text;
+                input.focus();
+                // 自动扩展输入框
+                input.style.height = 'auto';
+                input.style.height = input.scrollHeight + 'px';
+            }
+        };
+
+        recognition.onend = function () {
+            isRecording = false;
+            if (voiceBtn) {
+                voiceBtn.classList.remove('recording');
+                voiceBtn.textContent = '🎤';
+            }
+        };
+
+        recognition.onerror = function () {
+            isRecording = false;
+            if (voiceBtn) {
+                voiceBtn.classList.remove('recording');
+                voiceBtn.textContent = '🎤';
+            }
+        };
+    } else if (voiceBtn) {
+        voiceBtn.style.display = 'none';
+    }
+
+    // ── TTS（语音朗读回复）──
+    var ttsEnabled = true;
+    if (ttsToggle) {
+        ttsToggle.addEventListener('change', function () {
+            ttsEnabled = this.checked;
+            if (!ttsEnabled) {
+                window.speechSynthesis.cancel();
+            }
+        });
+    }
+
+    // 监听新消息并朗读
+    var observer = new MutationObserver(function (mutations) {
+        if (!ttsEnabled || !ttsToggle || !ttsToggle.checked) return;
+        for (var m = 0; m < mutations.length; m++) {
+            for (var n = 0; n < mutations[m].addedNodes.length; n++) {
+                var node = mutations[m].addedNodes[n];
+                if (node.nodeType === 1 && node.classList &&
+                    node.classList.contains('message-assistant') &&
+                    !node.classList.contains('proactive-msg')) {
+                    var textEl = node.querySelector('.message-text');
+                    if (textEl && textEl.textContent) {
+                        // 等文本稳定后朗读
+                        setTimeout(function (txt) {
+                            if (window.speechSynthesis.speaking) {
+                                window.speechSynthesis.cancel();
+                            }
+                            var utter = new SpeechSynthesisUtterance(txt);
+                            utter.lang = 'zh-CN';
+                            utter.rate = 1.0;
+                            utter.pitch = 1.1;
+                            // 尝试选择中文语音
+                            var voices = window.speechSynthesis.getVoices();
+                            for (var v = 0; v < voices.length; v++) {
+                                if (voices[v].lang.startsWith('zh')) {
+                                    utter.voice = voices[v];
+                                    break;
+                                }
+                            }
+                            window.speechSynthesis.speak(utter);
+                        }, 500, textEl.textContent);
+                    }
+                }
+            }
+        }
+    });
+    var msgContainer = document.getElementById('messageContainer');
+    if (msgContainer) {
+        observer.observe(msgContainer, { childList: true, subtree: false });
+    }
 })();
