@@ -342,7 +342,7 @@ class UnifiedAnalysisAgent:
             user_id=user.id,
             session_id=sessions[0].id,
             emotion_tags=result.get("emotion_tags", []),
-            attribution_chain=result.get("attribution_summary", ""),
+            attribution_chain=[result.get("attribution_summary", "")] if result.get("attribution_summary") else [],
             insight_text=result.get("insight_text", ""),
             pattern_hint=pattern_hint_key,
             occurrence_count=1,
