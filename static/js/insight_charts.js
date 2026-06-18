@@ -55,11 +55,11 @@
         }
         html += '</div>';
 
-        // 3. Key discoveries (时间线)
+        // 3. Key discoveries (时间线，无数据也显示)
+        html += '<div class="v2-card v2-card-insights">'
+            + '<h4>🔍 这几次聊天的发现</h4>'
+            + '<div class="v2-timeline">';
         if (data.key_discoveries && data.key_discoveries.length) {
-            html += '<div class="v2-card v2-card-insights">'
-                + '<h4>🔍 这几次聊天的发现</h4>'
-                + '<div class="v2-timeline">';
             data.key_discoveries.forEach(function (d) {
                 var emotions = (d.emotions || []).map(function (e) {
                     return '<span class="tag">' + e + '</span>';
@@ -71,14 +71,18 @@
                     + emotions
                     + '</div></div>';
             });
-            html += '</div></div>';
+        } else {
+            html += '<div class="v2-timeline-item"><div class="v2-tl-content">'
+                + '<div class="v2-tl-title" style="color:#999;font-weight:normal;">继续聊天，小绪会自动记录你的发现</div>'
+                + '</div></div>';
         }
+        html += '</div></div>';
 
-        // 4. Cognitive patterns
+        // 4. Cognitive patterns（无数据也显示）
+        html += '<div class="v2-card v2-card-patterns">'
+            + '<h4>🧠 你的认知模式</h4>'
+            + '<div class="v2-pattern-list">';
         if (data.cognitive_patterns && data.cognitive_patterns.length) {
-            html += '<div class="v2-card v2-card-patterns">'
-                + '<h4>🧠 你的认知模式</h4>'
-                + '<div class="v2-pattern-list">';
             data.cognitive_patterns.forEach(function (p) {
                 var count = p.occurrence_count || 0;
                 var firstSeen = p.first_seen ? '· 最早 ' + p.first_seen : '';
@@ -110,6 +114,9 @@
                 }
                 html += '</div>';
             });
+            html += '</div></div>';
+        } else {
+            html += '<div class="v2-pattern-card"><div class="v2-pattern-name" style="color:#999;font-weight:normal;">继续聊天，小绪会逐渐识别你的认知模式</div></div>';
             html += '</div></div>';
         }
 
