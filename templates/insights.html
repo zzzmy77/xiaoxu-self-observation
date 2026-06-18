@@ -9,30 +9,52 @@
     <!-- V2 内容由 JS 渲染到这里，替换 dashboard + chart -->
     <div id="insightsMain"></div>
 
-    <!-- 洞察日历 -->
-    <div class="insight-calendar-section">
-        <div class="calendar-card">
-            <div class="calendar-nav">
-                <button id="insightCalPrev" class="cal-btn">‹</button>
-                <span id="insightCalTitle" class="cal-title"></span>
-                <button id="insightCalNext" class="cal-btn">›</button>
-            </div>
-            <div class="calendar-grid" id="insightCalGrid">
-                <div class="cal-day-header">日</div>
-                <div class="cal-day-header">一</div>
-                <div class="cal-day-header">二</div>
-                <div class="cal-day-header">三</div>
-                <div class="cal-day-header">四</div>
-                <div class="cal-day-header">五</div>
-                <div class="cal-day-header">六</div>
-            </div>
+    <!-- Historical insight list -->
+    <div class="insight-list">
+        <h3>📖 历史洞察记录</h3>
+        <div class="time-filter">
+            <span class="time-filter-label">时间：</span>
+            <a href="?days=0" class="filter-btn{% if selected_days == 0 %} active{% endif %}">全部</a>
+            <a href="?days=7" class="filter-btn{% if selected_days == 7 %} active{% endif %}">近7天</a>
+            <a href="?days=30" class="filter-btn{% if selected_days == 30 %} active{% endif %}">近30天</a>
+            <a href="?days=90" class="filter-btn{% if selected_days == 90 %} active{% endif %}">近90天</a>
         </div>
-
-        <!-- 选定日期的洞察详情 -->
-        <div class="day-detail" id="insightDayDetail" style="display:none;">
-            <h3 id="insightDayTitle"></h3>
-            <div id="insightDayBody"></div>
-        </div>
+        {% if insights %}
+            {% for insight in insights %}
+                <div class="insight-card">
+                    <div class="insight-card-header">
+                        <span class="insight-date">{{ insight.created_at.strftime('%m/%d') }}</span>
+                        <span class="insight-tags">
+                            {% for tag in (insight.emotion_tags or []) %}
+                                <span class="tag">{{ tag }}</span>
+                            {% endfor %}
+                            {% if insight.occurrence_count and insight.occurrence_count > 1 %}
+                                <span class="tag tag-count">已出现 {{ insight.occurrence_count }} 次</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="insight-card-body">
+                        <p>{{ insight.insight_text }}</p>
+                    </div>
+                    {% if insight.attribution_chain %}
+                        <div class="insight-card-footer">
+                            <strong>归因链:</strong>
+                            <ul>
+                                {% for attr in insight.attribution_chain[:3] %}
+                                    <li>{{ attr[:50] }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state-guide">
+                <h3>🔍 还没有洞察</h3>
+                <p>和小绪聊上几次，洞察会自动生成。<br>你会发现自己的情绪模式和成长轨迹。</p>
+                <a href="{{ url_for('chat.index') }}" class="guide-link">💬 去和小绪聊聊</a>
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -106,16 +128,22 @@
     padding: 4px 0;
 }
 
-/* 洞察日历卡片 */
-.insight-cal-section { margin-top: 20px; }
-.insight-cal-card {
-    background: #f8f9fa; border-radius: 10px; padding: 14px 16px;
-    margin-bottom: 12px; border-left: 3px solid #5B8DB8;
+/* 时间筛选 */
+.time-filter {
+    display: flex; align-items: center; gap: 8px;
+    margin: 12px 0 16px 0;
 }
-.insight-cal-time { font-size: 11px; color: #999; margin-bottom: 4px; }
-.insight-cal-body p { font-size: 14px; color: #333; line-height: 1.6; margin: 0; }
-.insight-cal-tags { margin-top: 8px; }
-.insight-cal-tags .tag { font-size: 11px; }
+.time-filter-label { font-size: 13px; color: #999; }
+.filter-btn {
+    padding: 4px 14px; border-radius: 20px;
+    font-size: 13px; color: #666;
+    background: #f5f5f5; text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+}
+.filter-btn:hover { background: #e8e8e8; }
+.filter-btn.active {
+    background: #5B8DB8; color: #fff;
+}
 </style>
 {% endblock %}
 
