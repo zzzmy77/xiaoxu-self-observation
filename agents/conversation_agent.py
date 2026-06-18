@@ -9,6 +9,35 @@ from agent_framework.skills import EmpathySkill, AttributionSkill, ChallengeSkil
 from config import Config
 from utils.llm import llm_call
 
+
+# ── 幻觉过滤 ──
+_HALLU_WORDS = frozenset([
+    '困惑','迷茫','不安','担心','害怕','恐惧','焦虑','压力',
+    '怀疑','矛盾','挣扎','痛苦','疲惫','孤独','无助','绝望',
+    '愧疚','自责','后悔','遗憾','委屈','愤怒','失望','失落',
+    '纠结','犹豫','动摇','抗拒','回避','否认','压抑','麻木',
+])
+
+
+def strip_hallucination(user_msg: str, response: str) -> str:
+    """去掉回复中替用户表达了但用户原文没说的情绪所在的句子。"""
+    import re as _re
+    stripped = _re.sub(r'[，。！？、；：·…～""''（）【】《》/\\\\|]', ' ', user_msg)
+    user_words = set(stripped.split())
+    sentences = _re.split(r'(?<=[。！？])', response)
+    kept = []
+    for s in sentences:
+        s = s.strip()
+        if not s:
+            continue
+        bad = [w for w in _HALLU_WORDS if w in s and not any(w in uw or uw in w for uw in user_words)]
+        if bad:
+            logger.info('过滤幻觉: %s 词=%s', s[:40], bad)
+            continue
+        kept.append(s)
+    return ''.join(kept)
+
+
 logger = logging.getLogger(__name__)
 
 # ── Exploring mode prompt: active guidance, four-step structure ──
@@ -256,6 +285,12 @@ class ConversationAgent(BaseAgent):
         if mode == "exploring":
             context = self.run_skills(context)
 
+        # 幻觉过滤
+        context["response_text"] = strip_hallucination(
+            context.get("user_input", ""),
+            context["response_text"]
+        )
+
         return context["response_text"], context["structured_meta"]
 
     def run_stream(self, user_input: str, session_history: list[dict],
@@ -347,6 +382,10 @@ class ConversationAgent(BaseAgent):
         if mode == "exploring":
             context = self.run_skills(context)
 
+        context["response_text"] = strip_hallucination(
+            context.get("user_input", ""),
+            context["response_text"]
+        )
         yield (None, context["structured_meta"])
 
     def _fallback_response(self, user_input: str, mode="exploring") -> tuple[str, dict]:
