@@ -7,6 +7,9 @@ from models.user import User
 from models.session import Session
 from models.insight import Insight
 from models.message import Message
+from models.diary import Diary
+from models.monthly_summary import MonthlySummary
+from models.analytics import AnalyticsEvent
 
 profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
 
@@ -79,3 +82,49 @@ def update():
     user.profile = profile
     db.session.commit()
     return jsonify({"status": "ok", "profile": profile, "settings": settings})
+
+
+@profile_bp.route("/api/delete-account", methods=["POST"])
+@login_required
+def delete_account():
+    """Permanently delete the current user and all associated data."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    user = current_user
+    data = request.get_json() or {}
+    password = data.get("password", "")
+
+    if not user.check_password(password):
+        return jsonify({"status": "error", "message": "密码错误"}), 403
+
+    uid = user.id
+    username = user.username
+
+    try:
+        # 1. Delete data without cascade
+        Diary.query.filter_by(user_id=uid).delete()
+        MonthlySummary.query.filter_by(user_id=uid).delete()
+        AnalyticsEvent.query.filter_by(user_id=uid).delete()
+
+        # 2. Delete chroma vector store (if any)
+        try:
+            from agents.knowledge_store import KnowledgeStore
+            ks = KnowledgeStore(uid)
+            ks.clear()
+        except Exception:
+            pass
+
+        # 3. Delete user (cascades to sessions, messages, insights)
+        from flask_login import logout_user
+        db.session.delete(user)
+        db.session.commit()
+        logout_user()
+
+        logger.info("Account deleted: user_id=%d username=%s", uid, username)
+        return jsonify({"status": "ok", "message": "账号已永久删除"})
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Delete account failed for user %d: %s", uid, e)
+        return jsonify({"status": "error", "message": "删除失败"}), 500

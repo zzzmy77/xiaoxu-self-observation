@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+.btn-delete-account {
+    display: block; width: 100%; padding: 10px;
+    background: transparent; color: #C0392B;
+    border: 1px solid #E8A0A0; border-radius: 8px;
+    font-size: 13px; cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-delete-account:hover { background: #FFF0F0; }
+</style>
 <div class="profile-container">
     <div class="profile-header">
         <h2>👤 我的</h2>
@@ -74,6 +84,16 @@
                 <span class="stat-value" id="insightCount">{{ user.profile.get('total_sessions', 0) // 2 }}</span>
                 <span class="stat-label">洞察数量</span>
             </div>
+        </div>
+    </div>
+
+    <!-- Account Actions -->
+    <div class="profile-card">
+        <h3>⚙️ 账号操作</h3>
+        <div class="profile-field">
+            <button id="btnDeleteAccount" class="btn-delete-account">
+                🗑️ 注销账号并删除所有数据
+            </button>
         </div>
     </div>
 
@@ -156,6 +176,32 @@
                 container.appendChild(span);
             });
         });
+
+    // Delete account
+    var delBtn = document.getElementById('btnDeleteAccount');
+    if (delBtn) {
+        delBtn.addEventListener('click', function () {
+            var pwd = prompt('⚠️ 确认注销？请输入密码以永久删除所有数据（包括对话、日记、洞察、月报）。此操作不可恢复。');
+            if (!pwd) return;
+            fetch('/profile/api/delete-account', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: pwd}),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.status === 'ok') {
+                    alert('账号已永久删除');
+                    window.location.href = '/auth/login';
+                } else {
+                    alert('删除失败：' + (d.message || '未知错误'));
+                }
+            })
+            .catch(function() {
+                alert('网络错误，请重试');
+            });
+        });
+    }
 })();
 </script>
 {% endblock %}
