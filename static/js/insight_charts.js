@@ -124,116 +124,119 @@
         initInsightCalendar();
     }
 
-    // ── 气泡图（大自然色系，按频率展示）──
+    // ── 气泡图（大自然色系，集中簇状布局）──
     var NATURE_COLORS = [
-        '#A8D5BA',  // 浅草绿
-        '#7EC8E3',  // 天空蓝
-        '#F5E6A3',  // 淡黄
-        '#C8E6C9',  // 嫩绿
-        '#B3D9F2',  // 浅天蓝
-        '#FFF3B0',  // 奶油黄
-        '#A5D6A7',  // 薄荷绿
-        '#90CAF9',  // 晴空蓝
-        '#FFE082',  // 暖阳黄
-        '#81C784',  // 青草绿
+        '#A8D5BA', '#7EC8E3', '#F5E6A3', '#C8E6C9',
+        '#B3D9F2', '#FFF3B0', '#A5D6A7', '#90CAF9',
+        '#FFE082', '#81C784',
     ];
 
     function drawBubbleChart(cloudData) {
         var canvas = document.getElementById('emotionCloudCanvas');
         if (!canvas) return;
 
-        var bubbles = (cloudData && cloudData.bubbles) || [];
-        if (!bubbles.length) {
-            var ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#B0A090';
-            ctx.font = '14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('暂无数据', canvas.width / 2, canvas.height / 2);
-            return;
-        }
-
         var ctx = canvas.getContext('2d');
         var w = canvas.width;
         var h = canvas.height;
 
-        ctx.clearRect(0, 0, w, h);
+        // 1. 背景渐变（柔和暖光）
+        var grad = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.6);
+        grad.addColorStop(0, '#FDF8F0');
+        grad.addColorStop(1, '#F5F0E8');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
 
-        // 按频率（size）降序排列，频率高的放中间
+        var bubbles = (cloudData && cloudData.bubbles) || [];
+        if (!bubbles.length) {
+            ctx.fillStyle = '#C0B0A0';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('暂无数据', w / 2, h / 2);
+            return;
+        }
+
+        // 2. 按频率排序
         var sorted = bubbles.slice().sort(function (a, b) { return b.size - a.size; });
 
-        // 更小的最大半径，避免气泡过大
-        var maxR = 28;
-        var minR = 14;
+        var maxR = 34;
+        var minR = 16;
 
-        // 自然散落布局：频率最高的靠近中心，其他围绕散开
-        var cols = Math.min(sorted.length, Math.ceil(Math.sqrt(sorted.length * 2)));
-        var rows = Math.ceil(sorted.length / cols);
+        // 3. 绘制：从中心向外围散开，螺旋/同心圈布局
+        var cx = w / 2;
+        var cy = h / 2 - 4;
 
-        // 高频 (top 1-2) 居中放大
-        var topN = Math.min(2, sorted.length);
-        var rest = sorted.slice(topN);
+        // 第一个（最高频）放正中微上
+        var b0 = sorted[0];
+        var r0 = Math.max(minR, Math.min(maxR, b0.size * maxR));
+        drawBubble(ctx, b0, cx, cy, r0);
 
-        // 绘制高频中心气泡
-        for (var t = 0; t < topN; t++) {
-            var b = sorted[t];
-            var r = Math.max(minR, Math.min(maxR, b.size * maxR));
-            // 居中对齐，偏移少许
-            var cx = w * (t === 0 ? 0.5 : (topN > 1 ? 0.35 : 0.5));
-            if (t === 1 && topN > 1) cx = w * 0.65;
-            var cy = h * 0.4;
-            if (t === 1) cy = h * 0.45;
-            drawBubble(ctx, b, cx, cy, r);
+        // 其余绕中心环状散布，每层角度偏移
+        for (var i = 1; i < sorted.length; i++) {
+            var b = sorted[i];
+            var r = Math.max(minR, Math.min(maxR - 4, b.size * (maxR - 4)));
+
+            // 角度：利用素数是好用的黄金角度近似，每圈均匀分布
+            var angle = i * 2.4;  // 黄金角近似
+            // 半径随圈数递增：近的密，远的稀
+            var ring = Math.floor((i - 1) / 5) + 1;
+            var dist = (r + r0) * 0.6 + (ring - 1) * (maxR + minR) * 0.5;
+
+            var bx = cx + Math.cos(angle) * dist;
+            var by = cy + Math.sin(angle) * dist * 0.7;  // 垂直压缩，更集中
+
+            // 边界约束
+            bx = Math.max(r + 2, Math.min(w - r - 2, bx));
+            by = Math.max(r + 2, Math.min(h - r - 2, by));
+
+            drawBubble(ctx, b, bx, by, r);
         }
 
-        // 绘制其余气泡：网格散布在空白区域
-        if (rest.length > 0) {
-            var padX = 30;
-            var padY = 20;
-            var gridW = w - padX * 2;
-            var gridH = h - padY - 20;
-            var restCols = Math.min(rest.length, Math.ceil(Math.sqrt(rest.length * 1.5)));
-            var restRows = Math.ceil(rest.length / restCols);
-            var cellW = gridW / restCols;
-            var cellH = gridH / restRows;
-
-            for (var i = 0; i < rest.length; i++) {
-                var b2 = rest[i];
-                var col = i % restCols;
-                var row = Math.floor(i / restCols);
-                var r2 = Math.max(minR - 2, Math.min(maxR - 4, b2.size * (maxR - 4)));
-                var cx2 = padX + cellW * col + cellW / 2;
-                var cy2 = padY + cellH * row + cellH / 2;
-                drawBubble(ctx, b2, cx2, cy2, r2);
-            }
+        // 4. 零星装饰小点（营造「漂浮」感）
+        ctx.globalAlpha = 0.15;
+        for (var d = 0; d < 12; d++) {
+            var dx = 20 + (d * 31) % (w - 40);
+            var dy = 10 + (d * 17) % (h - 20);
+            var dr = 2 + (d % 4);
+            ctx.beginPath();
+            ctx.arc(dx, dy, dr, 0, Math.PI * 2);
+            ctx.fillStyle = NATURE_COLORS[d % NATURE_COLORS.length];
+            ctx.fill();
         }
+        ctx.globalAlpha = 1.0;
     }
 
     function drawBubble(ctx, b, x, y, r) {
-        // 自然色系随机选取
-        var colorIdx = Math.floor(Math.random() * NATURE_COLORS.length);
+        var colorIdx = (b.emotion.length + Math.round(r)) % NATURE_COLORS.length;
         var baseColor = NATURE_COLORS[colorIdx];
 
-        // 绘制气泡（半透明填充+实线边框）
+        // 阴影
+        ctx.beginPath();
+        ctx.arc(x + 1, y + 2, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.04)';
+        ctx.fill();
+
+        // 气泡主体（半透明）
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = baseColor + '90';
+        ctx.fillStyle = baseColor + '99';
         ctx.fill();
         ctx.strokeStyle = baseColor;
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
-        // 淡淡光晕
+        // 高光
         ctx.beginPath();
-        ctx.arc(x - r * 0.2, y - r * 0.2, r * 0.3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         ctx.fill();
 
-        // 情绪文字（深棕色）
+        // 情绪文字（深棕加粗）
         ctx.fillStyle = '#3D3028';
-        ctx.font = 'bold ' + Math.max(10, r * 0.55) + 'px sans-serif';
+        var fontSize = Math.max(10, Math.min(15, r * 0.55));
+        ctx.font = 'bold ' + fontSize + 'px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(b.emotion, x, y - 2);
+        ctx.fillText(b.emotion, x, y - 1);
     }
 
     // ── 日历 ──
