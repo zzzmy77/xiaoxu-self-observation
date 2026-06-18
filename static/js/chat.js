@@ -2,6 +2,14 @@
 (function () {
     'use strict';
 
+    // ── 归因文本质量过滤 ──
+    function isValidAttribution(text) {
+        if (!text || text.length < 4) return false;
+        var generic = ['用户','外部','内部','自己','别人','他人','环境','社会','家庭','工作','学习','生活','性格','情绪','压力'];
+        if (generic.indexOf(text) !== -1) return false;
+        return true;
+    }
+
     // ── Time formatting ──
     function formatTime(isoStr) {
         if (!isoStr) return '';
@@ -148,8 +156,8 @@
             }
         }
 
-        // ── attribution 变化时追加关键节点 ──
-        if (attribution && (!last || last.attribution !== attribution)) {
+        // ── attribution 变化时追加关键节点（过短/泛词跳过） ──
+        if (isValidAttribution(attribution) && (!last || last.attribution !== attribution)) {
             addKeyNode(attribution);
         }
 
@@ -169,8 +177,8 @@
             intensityChange.className = 'intensity-change negative';
         }
 
-        // ── 归因浮现 ──
-        if (attribution && (!last || last.attribution !== attribution)) {
+        // ── 归因浮现（过短/泛词跳过） ──
+        if (isValidAttribution(attribution) && (!last || last.attribution !== attribution)) {
             attributionSection.style.display = 'block';
             attributionText.textContent = attribution;
             attributionCard.style.display = 'flex';
@@ -366,7 +374,7 @@
 
     // ── 关键节点 ──
     function addKeyNode(text) {
-        if (!keyNodesSection || !keyNodesList || !text) return;
+        if (!keyNodesSection || !keyNodesList || !isValidAttribution(text)) return;
         keyNodesSection.style.display = 'block';
         for (var i = 0; i < keyNodes.length; i++) {
             if (keyNodes[i] === text) return;
@@ -468,6 +476,7 @@
                 keyNodesSection.style.display = 'block';
                 keyNodesList.innerHTML = '';
                 for (var i = 0; i < keyNodes.length; i++) {
+                    if (!isValidAttribution(keyNodes[i])) continue;
                     var d = document.createElement('div');
                     d.className = 'key-node-item';
                     d.innerHTML = '<span class="key-node-dot">🔍</span><span class="key-node-text">' + keyNodes[i] + '</span>';
@@ -501,7 +510,7 @@
             if (state.attributionVisible && attributionSection) {
                 attributionSection.style.display = 'block';
                 attributionCard.style.display = 'flex';
-                if (state.attributionText) attributionText.textContent = state.attributionText;
+                if (isValidAttribution(state.attributionText)) attributionText.textContent = state.attributionText;
             }
 
             // 恢复强度面板
