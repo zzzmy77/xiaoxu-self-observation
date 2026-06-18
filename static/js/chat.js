@@ -967,6 +967,12 @@
             }
         };
     } else if (voiceBtn) {
-        voiceBtn.style.display = 'none';
+        // 浏览器不支持 SpeechRecognition（如 iOS Safari）
+        // 不隐藏按钮，点击时提示使用键盘麦克风
+        voiceBtn.title = '当前浏览器不支持语音输入，请使用键盘麦克风';
+        voiceBtn.style.opacity = '0.4';
+        voiceBtn.addEventListener('click', function () {
+            alert('当前浏览器不支持语音输入。\niPhone 用户可以使用键盘右下角的麦克风按钮进行语音输入。');
+        });
     }
 })();
