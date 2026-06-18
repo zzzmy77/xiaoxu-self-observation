@@ -840,6 +840,12 @@
     // 刷新页面后恢复面板状态
     restorePanelState();
 
+    // 兜底：有历史对话但面板没显示时，强制显示
+    var hasMessages = document.querySelectorAll('#messageContainer .message-user').length > 0;
+    if (hasMessages && perceptionPanel && perceptionPanel.style.display !== 'block') {
+        perceptionPanel.style.display = 'block';
+    }
+
     // 检查是否有新的月度总结
     checkMonthlyNotifications();
 
