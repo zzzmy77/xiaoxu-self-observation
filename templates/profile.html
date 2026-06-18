@@ -125,21 +125,19 @@
     document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
     document.getElementById('saveModeBtn').addEventListener('click', saveMode);
 
-    // Load stats from DB
+    // Load stats + emotion cloud from real DB data
     fetch('/profile/api/stats')
         .then(function(r) { return r.json(); })
         .then(function(s) {
             var sc = document.getElementById('sessionCount');
             var ic = document.getElementById('insightCount');
+            var ec = document.getElementById('emotionCount');
             if (sc) sc.textContent = s.total_sessions;
             if (ic) ic.textContent = s.total_insights;
-        });
+            if (ec) ec.textContent = s.total_emotions;
 
-    // Load emotion cloud from insight API
-    fetch('/insights/api/data')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            var emotions = data.emotion_frequencies;
+            // Emotion cloud
+            var emotions = s.emotion_frequencies;
             var container = document.getElementById('emotionCloud');
             if (!container) return;
             var keys = Object.keys(emotions);
@@ -157,10 +155,6 @@
                 span.textContent = k + '(' + emotions[k] + ')';
                 container.appendChild(span);
             });
-
-            // Update emotion count stat
-            var ec = document.getElementById('emotionCount');
-            if (ec) ec.textContent = data.total_emotions || 0;
         });
 })();
 </script>

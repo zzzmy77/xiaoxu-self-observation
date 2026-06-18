@@ -28,19 +28,32 @@ def api():
 @profile_bp.route("/api/stats")
 def stats():
     user = current_user
+
+    # Counts
     total_sessions = Session.query.filter_by(user_id=user.id).count()
     total_insights = Insight.query.filter_by(user_id=user.id).count()
-    total_emotions = (
-        Message.query
-        .join(Session, Message.session_id == Session.id)
-        .filter(Session.user_id == user.id)
-        .filter(Message.role == "assistant")
-        .count()
-    )
+
+    # Emotion frequencies — aggregate from all assistant messages in real time
+    from collections import Counter
+    sessions = Session.query.filter_by(user_id=user.id).all()
+    session_ids = [s.id for s in sessions]
+    msgs = (Message.query
+            .filter(Message.session_id.in_(session_ids))
+            .filter(Message.role == "assistant")
+            .all())
+    all_emotions = []
+    for m in msgs:
+        meta = m.structured_meta or {}
+        all_emotions.extend(meta.get("emotion_tags", []))
+
+    emotion_frequencies = dict(Counter(all_emotions))
+    total_emotions = len(all_emotions)
+
     return jsonify({
         "total_sessions": total_sessions,
         "total_insights": total_insights,
         "total_emotions": total_emotions,
+        "emotion_frequencies": emotion_frequencies,
     })
 
 
