@@ -1,6 +1,6 @@
 """Insights routes — cross-session analysis."""
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import current_user, login_required
 from collections import Counter
@@ -8,6 +8,7 @@ from collections import Counter
 from models.insight import Insight
 from models.message import Message
 from models.session import Session
+from utils.timezone import today_bjt
 
 insights_bp = Blueprint("insights", __name__, url_prefix="/insights")
 
@@ -16,15 +17,64 @@ insights_bp = Blueprint("insights", __name__, url_prefix="/insights")
 @login_required
 def index():
     user = current_user
-    days = request.args.get("days", 0, type=int)
+    return render_template("insights.html", user=user)
 
-    query = Insight.query.filter_by(user_id=user.id)
-    if days > 0:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        query = query.filter(Insight.created_at >= cutoff)
 
-    insights = query.order_by(Insight.created_at.desc()).all()
-    return render_template("insights.html", user=user, insights=insights, selected_days=days)
+# ── Calendar APIs (insights-only) ──
+
+@insights_bp.route("/api/calendar")
+@login_required
+def insight_calendar():
+    """Return {date: {has_insight, insights[]}} for a given month."""
+    from app import db
+    from sqlalchemy import extract
+
+    user = current_user
+    _bj = today_bjt()
+    year = request.args.get("year", type=int, default=_bj.year)
+    month = request.args.get("month", type=int, default=_bj.month)
+
+    insights = (Insight.query
+               .filter_by(user_id=user.id)
+               .filter(extract("year", Insight.created_at) == year)
+               .filter(extract("month", Insight.created_at) == month)
+               .all())
+
+    result = {}
+    for i in insights:
+        key = i.created_at.date().isoformat() if i.created_at else ""
+        if key:
+            if key not in result:
+                result[key] = {"has_insight": True, "insights": []}
+            result[key]["insights"].append({
+                "id": i.id,
+                "text": (i.insight_text or "")[:60],
+                "emotion_tags": i.emotion_tags or [],
+                "time": i.created_at.strftime("%H:%M") if i.created_at else "",
+            })
+
+    return jsonify(result)
+
+
+@insights_bp.route("/api/day/<int:year>/<int:month>/<int:day>")
+@login_required
+def insight_day_detail(year, month, day):
+    """Return insights for a specific date."""
+    from app import db
+
+    user = current_user
+    target = date(year, month, day)
+
+    insights = (Insight.query
+                .filter_by(user_id=user.id)
+                .filter(db.func.date(Insight.created_at) == target)
+                .order_by(Insight.created_at.desc())
+                .all())
+
+    return jsonify({
+        "date": target.isoformat(),
+        "insights": [i.to_dict() for i in insights],
+    })
 
 
 @insights_bp.route("/api/data")

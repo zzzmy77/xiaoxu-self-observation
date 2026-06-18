@@ -121,41 +121,15 @@
                 + '</div>';
         }
 
-        // 6. Stats (foldable)
-        html += '<div class="v2-card v2-card-stats">'
-            + '<div class="v2-stats-header" id="statsToggle">'
-            + '<h4>📊 数据详情</h4>'
-            + '<span class="v2-stats-arrow">▾</span>'
-            + '</div>'
-            + '<div class="v2-stats-body" id="statsBody" style="display:none;">'
-            + '<div class="v2-stat-row"><span class="v2-stat-label">会话</span><span class="v2-stat-val">'
-            + (data.stats ? data.stats.sessions : 0) + ' 次</span></div>'
-            + '<div class="v2-stat-row"><span class="v2-stat-label">洞察</span><span class="v2-stat-val">'
-            + (data.stats ? data.stats.insights : 0) + ' 条</span></div>';
-        if (data.stats && data.stats.top_emotions) {
-            var topEmo = data.stats.top_emotions;
-            Object.keys(topEmo).forEach(function (emo) {
-                html += '<div class="v2-stat-row"><span class="v2-stat-label">' + emo + '</span>'
-                    + '<span class="v2-stat-val">' + topEmo[emo] + ' 次</span></div>';
-            });
-        }
-        html += '</div></div>';
+
 
         container.innerHTML = html;
 
         // ── 气泡图 ──
         drawBubbleChart(data.emotion_cloud);
 
-        // ── 折叠交互 ──
-        var toggle = document.getElementById('statsToggle');
-        var body = document.getElementById('statsBody');
-        if (toggle && body) {
-            toggle.addEventListener('click', function () {
-                var isOpen = body.style.display !== 'none';
-                body.style.display = isOpen ? 'none' : 'block';
-                toggle.querySelector('.v2-stats-arrow').textContent = isOpen ? '▾' : '▴';
-            });
-        }
+        // ── 日历初始化 ──
+        initInsightCalendar();
     }
 
     // ── 气泡图（纯 Canvas）──
@@ -251,6 +225,131 @@
         ctx.stroke();
         ctx.setLineDash([]);
     }
+
+    // ── 洞察日历 ──
+    var _calYear, _calMonth;
+
+    function initInsightCalendar() {
+        var today = new Date();
+        renderInsightCalendar(today.getFullYear(), today.getMonth());
+    }
+
+    function renderInsightCalendar(year, month) {
+        _calYear = year;
+        _calMonth = month;
+        var grid = document.getElementById('insightCalGrid');
+        var title = document.getElementById('insightCalTitle');
+        if (!grid || !title) return;
+
+        title.textContent = year + '年' + (month + 1) + '月';
+
+        // Keep header row (first 7 children)
+        while (grid.children.length > 7) {
+            grid.removeChild(grid.lastChild);
+        }
+
+        var firstDay = new Date(year, month, 1).getDay();
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (var i = 0; i < firstDay; i++) {
+            var empty = document.createElement('div');
+            empty.className = 'cal-day cal-day-empty';
+            grid.appendChild(empty);
+        }
+
+        for (var d = 1; d <= daysInMonth; d++) {
+            var cell = document.createElement('div');
+            cell.className = 'cal-day';
+            cell.dataset.date = year + '-' + _pad(month + 1) + '-' + _pad(d);
+            cell.textContent = d;
+
+            var today = new Date();
+            if (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) {
+                cell.classList.add('cal-day-today');
+            }
+
+            cell.addEventListener('click', function () {
+                loadInsightDayDetail(this.dataset.date);
+            });
+
+            grid.appendChild(cell);
+        }
+
+        loadInsightCalendarData(year, month + 1);
+    }
+
+    function loadInsightCalendarData(year, month) {
+        fetch('/insights/api/calendar?year=' + year + '&month=' + month)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var cells = document.querySelectorAll('#insightCalGrid .cal-day[data-date]');
+                cells.forEach(function (cell) {
+                    var key = cell.dataset.date;
+                    if (data[key]) {
+                        cell.classList.add('cal-day-has-data', 'cal-day-has-insight');
+                        cell.title = '有 ' + data[key].insights.length + ' 条洞察';
+                    }
+                });
+            });
+    }
+
+    function loadInsightDayDetail(dateStr) {
+        var parts = dateStr.split('-');
+        var detail = document.getElementById('insightDayDetail');
+        var title = document.getElementById('insightDayTitle');
+        var body = document.getElementById('insightDayBody');
+        if (!detail || !title || !body) return;
+
+        detail.style.display = 'block';
+        title.textContent = dateStr;
+        body.innerHTML = '<div class="v2-loading">加载中...</div>';
+
+        fetch('/insights/api/day/' + parts[0] + '/' + parts[1] + '/' + parts[2])
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                body.innerHTML = '';
+                if (data.insights && data.insights.length) {
+                    data.insights.forEach(function (i) {
+                        var card = document.createElement('div');
+                        card.className = 'insight-cal-card';
+                        var tags = (i.emotion_tags || []).map(function (t) {
+                            return '<span class="tag">' + escapeHtml(t) + '</span>';
+                        }).join('');
+                        card.innerHTML = '<div class="insight-cal-time">'
+                            + (i.created_at ? i.created_at.slice(11, 16) : '')
+                            + '</div>'
+                            + '<div class="insight-cal-body"><p>' + escapeHtml(i.insight_text) + '</p></div>'
+                            + '<div class="insight-cal-tags">' + tags + '</div>';
+                        body.appendChild(card);
+                    });
+                } else {
+                    body.innerHTML = '<p class="empty-state">这一天没有洞察</p>';
+                }
+            })
+            .catch(function () {
+                body.innerHTML = '<p class="empty-state">加载失败</p>';
+            });
+    }
+
+    // Calendar nav
+    document.addEventListener('click', function (e) {
+        var prev = e.target.closest('#insightCalPrev');
+        var next = e.target.closest('#insightCalNext');
+        if (prev) {
+            var m = _calMonth - 1;
+            var y = _calYear;
+            if (m < 0) { m = 11; y--; }
+            renderInsightCalendar(y, m);
+        }
+        if (next) {
+            var m = _calMonth + 1;
+            var y = _calYear;
+            if (m > 11) { m = 0; y++; }
+            renderInsightCalendar(y, m);
+        }
+    });
+
+    function _pad(n) { return n < 10 ? '0' + n : '' + n; }
 
     // ── Helper ──
     function escapeHtml(str) {
