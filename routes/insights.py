@@ -366,7 +366,10 @@ def _build_cognitive_patterns(cm: dict) -> list:
         })
 
     # 从精神发展轨迹读取核心信念（提取行为+认知映射）
-    beliefs = cm.get("精神发展轨迹", {}).get("core_beliefs", [])
+    _trajectory = cm.get("精神发展轨迹", {})
+    if not isinstance(_trajectory, dict):
+        _trajectory = {}
+    beliefs = _trajectory.get("core_beliefs", [])
     belief_related = cm.get("人格行为与认知特征", {})
     behavioral = belief_related.get("behavioral", [])
     cognitive = belief_related.get("cognitive", [])
@@ -493,7 +496,13 @@ def insight_v2():
     # ── 情绪频率（profile → cognitive_model → 消息聚合）──
     emotion_freq = profile.get("emotion_frequencies", {})
     if not emotion_freq:
-        emotion_freq = cm.get("情绪与心理健康趋势", {}).get("recent_trend", {}).get("dominant_emotions", [])
+        _mental = cm.get("情绪与心理健康趋势", {})
+        if not isinstance(_mental, dict):
+            _mental = {}
+        _trend = _mental.get("recent_trend", {})
+        if not isinstance(_trend, dict):
+            _trend = {}
+        emotion_freq = _trend.get("dominant_emotions", [])
         if emotion_freq:
             # 解析 "焦虑×5" 格式
             parsed = {}
@@ -534,7 +543,10 @@ def insight_v2():
                 generated_warm = True
 
         if not pivot_point:
-            beliefs = cm.get("精神发展轨迹", {}).get("core_beliefs", [])
+            _traj = cm.get("精神发展轨迹", {})
+            if not isinstance(_traj, dict):
+                _traj = {}
+            beliefs = _traj.get("core_beliefs", [])
             pivot_text = _generate_pivot_point_llm(user, beliefs, key_discoveries)
             if pivot_text:
                 profile = dict(user.profile or {})
