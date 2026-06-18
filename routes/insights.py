@@ -1,6 +1,6 @@
 """Insights routes — cross-session analysis."""
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import current_user, login_required
 from collections import Counter
@@ -8,6 +8,7 @@ from collections import Counter
 from models.insight import Insight
 from models.message import Message
 from models.session import Session
+from utils.timezone import today_bjt
 
 insights_bp = Blueprint("insights", __name__, url_prefix="/insights")
 
@@ -25,6 +26,58 @@ def index():
 
     insights = query.order_by(Insight.created_at.desc()).all()
     return render_template("insights.html", user=user, insights=insights, selected_days=days)
+
+
+# ── Calendar API ──
+
+@insights_bp.route("/api/calendar")
+@login_required
+def insight_calendar():
+    """Return {date: {has_insight, count}} for a given month."""
+    from sqlalchemy import extract
+    from app import db
+
+    user = current_user
+    _bj = today_bjt()
+    year = request.args.get("year", type=int, default=_bj.year)
+    month = request.args.get("month", type=int, default=_bj.month)
+
+    insights = (Insight.query
+               .filter_by(user_id=user.id)
+               .filter(extract("year", Insight.created_at) == year)
+               .filter(extract("month", Insight.created_at) == month)
+               .all())
+
+    result = {}
+    for i in insights:
+        if i.created_at:
+            key = i.created_at.date().isoformat()
+            if key not in result:
+                result[key] = {"has_insight": True, "count": 0}
+            result[key]["count"] += 1
+
+    return jsonify(result)
+
+
+@insights_bp.route("/api/day/<int:year>/<int:month>/<int:day>")
+@login_required
+def insight_day_detail(year, month, day):
+    """Return insights for a specific date."""
+    from app import db
+
+    user = current_user
+    target = date(year, month, day)
+
+    insights = (Insight.query
+                .filter_by(user_id=user.id)
+                .filter(db.func.date(Insight.created_at) == target)
+                .order_by(Insight.created_at.desc())
+                .all())
+
+    return jsonify({
+        "date": target.isoformat(),
+        "insights": [i.to_dict() for i in insights],
+    })
 
 
 @insights_bp.route("/api/data")

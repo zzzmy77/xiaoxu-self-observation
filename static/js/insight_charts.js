@@ -128,7 +128,8 @@
         // ── 气泡图 ──
         drawBubbleChart(data.emotion_cloud);
 
-
+        // ── 日历初始化 ──
+        initInsightCalendar();
     }
 
     // ── 气泡图（纯 Canvas）──
@@ -224,6 +225,168 @@
         ctx.stroke();
         ctx.setLineDash([]);
     }
+
+    // ── 日历 ──
+    var _calYear, _calMonth;
+
+    function initInsightCalendar() {
+        var today = new Date();
+        renderInsightCal(today.getFullYear(), today.getMonth());
+    }
+
+    function renderInsightCal(year, month) {
+        _calYear = year;
+        _calMonth = month;
+        var grid = document.getElementById('insightCalGrid');
+        var title = document.getElementById('insightCalTitle');
+        if (!grid || !title) return;
+
+        title.textContent = year + '年' + (month + 1) + '月';
+
+        while (grid.children.length > 7) {
+            grid.removeChild(grid.lastChild);
+        }
+
+        var firstDay = new Date(year, month, 1).getDay();
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (var i = 0; i < firstDay; i++) {
+            var empty = document.createElement('div');
+            empty.className = 'cal-day cal-day-empty';
+            grid.appendChild(empty);
+        }
+
+        for (var d = 1; d <= daysInMonth; d++) {
+            var cell = document.createElement('div');
+            cell.className = 'cal-day';
+            cell.dataset.date = year + '-' + _pad(month + 1) + '-' + _pad(d);
+            cell.textContent = d;
+
+            var today = new Date();
+            if (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) {
+                cell.classList.add('cal-day-today');
+            }
+
+            cell.addEventListener('click', function () {
+                filterByDate(this.dataset.date);
+            });
+
+            grid.appendChild(cell);
+        }
+
+        loadInsightCalData(year, month + 1);
+    }
+
+    function loadInsightCalData(year, month) {
+        fetch('/insights/api/calendar?year=' + year + '&month=' + month)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var cells = document.querySelectorAll('#insightCalGrid .cal-day[data-date]');
+                cells.forEach(function (cell) {
+                    if (data[cell.dataset.date]) {
+                        cell.classList.add('cal-day-has-data', 'cal-day-has-insight');
+                    }
+                });
+            });
+    }
+
+    function filterByDate(dateStr) {
+        // Clear previous selection
+        document.querySelectorAll('#insightCalGrid .cal-day-selected').forEach(function (c) {
+            c.classList.remove('cal-day-selected');
+        });
+
+        // Mark selected day
+        var cells = document.querySelectorAll('#insightCalGrid .cal-day[data-date]');
+        cells.forEach(function (c) {
+            if (c.dataset.date === dateStr) {
+                c.classList.add('cal-day-selected');
+            }
+        });
+
+        // Show banner
+        var banner = document.getElementById('insightDateFilterBanner');
+        var label = document.getElementById('insightDateLabel');
+        if (banner && label) {
+            var parts = dateStr.split('-');
+            label.textContent = '📅 ' + parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日的洞察';
+            banner.style.display = 'flex';
+        }
+
+        // Filter insight cards
+        var cards = document.querySelectorAll('.insight-card');
+        var hasMatch = false;
+        cards.forEach(function (card) {
+            if (card.dataset.date === dateStr) {
+                card.style.display = 'block';
+                hasMatch = true;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Show empty state if no matches
+        var empty = document.querySelector('.insight-list .empty-state-guide');
+        if (!empty) {
+            var list = document.querySelector('.insight-list');
+            if (list && !list.querySelector('.empty-state-guide')) {
+                var el = document.createElement('div');
+                el.className = 'empty-state-guide insight-date-empty';
+                el.innerHTML = '<h3>这一天没有洞察</h3>';
+                el.style.display = hasMatch ? 'none' : 'block';
+                list.appendChild(el);
+            }
+        }
+        var dateEmpty = document.querySelector('.insight-date-empty');
+        if (dateEmpty) {
+            dateEmpty.style.display = hasMatch ? 'none' : 'block';
+        }
+    }
+
+    function clearDateFilter() {
+        // Clear selection
+        document.querySelectorAll('#insightCalGrid .cal-day-selected').forEach(function (c) {
+            c.classList.remove('cal-day-selected');
+        });
+
+        // Hide banner
+        var banner = document.getElementById('insightDateFilterBanner');
+        if (banner) banner.style.display = 'none';
+
+        // Show all cards
+        document.querySelectorAll('.insight-card').forEach(function (card) {
+            card.style.display = 'block';
+        });
+
+        // Hide date-empty notice
+        var dateEmpty = document.querySelector('.insight-date-empty');
+        if (dateEmpty) dateEmpty.style.display = 'none';
+    }
+
+    // Clear filter button
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('#insightDateClear')) {
+            clearDateFilter();
+        }
+    });
+
+    // Calendar nav
+    document.addEventListener('click', function (e) {
+        var prev = e.target.closest('#insightCalPrev');
+        var next = e.target.closest('#insightCalNext');
+        if (prev) {
+            var m = _calMonth - 1, y = _calYear;
+            if (m < 0) { m = 11; y--; }
+            renderInsightCal(y, m);
+        }
+        if (next) {
+            var m = _calMonth + 1, y = _calYear;
+            if (m > 11) { m = 0; y++; }
+            renderInsightCal(y, m);
+        }
+    });
+
+    function _pad(n) { return n < 10 ? '0' + n : '' + n; }
 
     // ── Helper ──
     function escapeHtml(str) {

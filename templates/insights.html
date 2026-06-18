@@ -9,6 +9,29 @@
     <!-- V2 内容由 JS 渲染到这里，替换 dashboard + chart -->
     <div id="insightsMain"></div>
 
+    <!-- 日历 -->
+    <div class="calendar-card insight-calendar">
+        <div class="calendar-nav">
+            <button id="insightCalPrev" class="cal-btn">‹</button>
+            <span id="insightCalTitle" class="cal-title"></span>
+            <button id="insightCalNext" class="cal-btn">›</button>
+        </div>
+        <div class="calendar-grid" id="insightCalGrid">
+            <div class="cal-day-header">日</div>
+            <div class="cal-day-header">一</div>
+            <div class="cal-day-header">二</div>
+            <div class="cal-day-header">三</div>
+            <div class="cal-day-header">四</div>
+            <div class="cal-day-header">五</div>
+            <div class="cal-day-header">六</div>
+        </div>
+    </div>
+
+    <div id="insightDateFilterBanner" class="insight-date-banner" style="display:none;">
+        <span id="insightDateLabel"></span>
+        <button id="insightDateClear" class="filter-btn">✕ 清除筛选</button>
+    </div>
+
     <!-- Historical insight list -->
     <div class="insight-list">
         <h3>📖 历史洞察记录</h3>
@@ -21,7 +44,7 @@
         </div>
         {% if insights %}
             {% for insight in insights %}
-                <div class="insight-card">
+                <div class="insight-card" data-date="{{ insight.created_at.date().isoformat() if insight.created_at else '' }}">
                     <div class="insight-card-header">
                         <span class="insight-date">{{ insight.created_at.strftime('%m/%d') }}</span>
                         <span class="insight-tags">
@@ -143,6 +166,28 @@
 .filter-btn:hover { background: #e8e8e8; }
 .filter-btn.active {
     background: #5B8DB8; color: #fff;
+}
+
+/* 洞察日历 */
+.insight-calendar { margin-bottom: 16px; }
+.insight-calendar .cal-day-has-insight {
+    color: #5B8DB8; font-weight: 600;
+    text-decoration: underline; text-underline-offset: 2px;
+}
+.insight-calendar .cal-day-selected {
+    background: #5B8DB8; color: #fff !important;
+    border-radius: 6px; font-weight: 700;
+}
+
+/* 日期筛选横幅 */
+.insight-date-banner {
+    display: flex; align-items: center; gap: 10px;
+    background: #E8F0FE; border-radius: 8px;
+    padding: 8px 14px; margin-bottom: 12px;
+    font-size: 13px; color: #5B8DB8;
+}
+.insight-date-banner .filter-btn {
+    font-size: 12px; padding: 2px 10px;
 }
 </style>
 {% endblock %}
