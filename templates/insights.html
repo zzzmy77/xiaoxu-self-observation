@@ -9,32 +9,33 @@
     <!-- V2 内容由 JS 渲染到这里，替换 dashboard + chart -->
     <div id="insightsMain"></div>
 
-    <!-- 日历 -->
-    <div class="calendar-card insight-calendar">
-        <div class="calendar-nav">
-            <button id="insightCalPrev" class="cal-btn">‹</button>
-            <span id="insightCalTitle" class="cal-title"></span>
-            <button id="insightCalNext" class="cal-btn">›</button>
-        </div>
-        <div class="calendar-grid" id="insightCalGrid">
-            <div class="cal-day-header">日</div>
-            <div class="cal-day-header">一</div>
-            <div class="cal-day-header">二</div>
-            <div class="cal-day-header">三</div>
-            <div class="cal-day-header">四</div>
-            <div class="cal-day-header">五</div>
-            <div class="cal-day-header">六</div>
-        </div>
-    </div>
-
-    <div id="insightDateFilterBanner" class="insight-date-banner" style="display:none;">
-        <span id="insightDateLabel"></span>
-        <button id="insightDateClear" class="filter-btn">✕ 清除筛选</button>
-    </div>
-
     <!-- Historical insight list -->
     <div class="insight-list">
         <h3>📖 历史洞察记录</h3>
+
+        <!-- 日历 -->
+        <div class="calendar-card insight-calendar">
+            <div class="calendar-nav">
+                <button id="insightCalPrev" class="cal-btn">‹</button>
+                <span id="insightCalTitle" class="cal-title"></span>
+                <button id="insightCalNext" class="cal-btn">›</button>
+            </div>
+            <div class="calendar-grid" id="insightCalGrid">
+                <div class="cal-day-header">日</div>
+                <div class="cal-day-header">一</div>
+                <div class="cal-day-header">二</div>
+                <div class="cal-day-header">三</div>
+                <div class="cal-day-header">四</div>
+                <div class="cal-day-header">五</div>
+                <div class="cal-day-header">六</div>
+            </div>
+        </div>
+
+        <div id="insightDateFilterBanner" class="insight-date-banner" style="display:none;">
+            <span id="insightDateLabel"></span>
+            <button id="insightDateClear" class="filter-btn">✕ 清除筛选</button>
+        </div>
+
         {% if insights %}
             {% for insight in insights %}
                 <div class="insight-card" data-date="{{ insight.created_at.date().isoformat() if insight.created_at else '' }}">
