@@ -1129,15 +1129,6 @@ body {
     to { transform: scale(1.2); opacity: 1; }
 }
 
-/* TTS 开关 */
-.tts-toggle {
-    cursor: pointer; font-size: 13px; user-select: none;
-    display: inline-flex; align-items: center; gap: 2px;
-}
-.tts-toggle input { display: none; }
-.tts-toggle span { opacity: 0.5; transition: opacity 0.2s; }
-.tts-toggle input:checked + span { opacity: 1; }
-
 /* 阶段温馨文案 */
 .stage-warm-msg {
     display: none;
