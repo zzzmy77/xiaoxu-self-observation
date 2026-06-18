@@ -840,73 +840,10 @@
     // 刷新页面后恢复面板状态
     restorePanelState();
 
-    // 加载当天对话数据到面板（凌晨5点刷新）
-    loadTodayPanel();
-
     // 检查是否有新的月度总结
     checkMonthlyNotifications();
 
     scrollToBottom();
-
-    // ── 当天面板数据加载 ──
-    function loadTodayPanel() {
-        fetch('/chat/api/today-panel')
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (!data.has_data) return;
-
-                emotionHistory = data.emotion_history || [];
-                lastStage = data.last_stage || '';
-                turnCount = data.turn_count || 0;
-                keyNodes = data.key_nodes || [];
-
-                if (emotionHistory.length > 0 && perceptionPanel) {
-                    perceptionPanel.style.display = 'block';
-                    var lastPt = emotionHistory[emotionHistory.length - 1];
-                    updateCurrentEmotionCard(lastPt.emotion, lastPt.intensity);
-                }
-
-                // 情绪摘要
-                if (data.emotion_summary && emotionSummaryEl) {
-                    emotionSummaryEl.textContent = data.emotion_summary;
-                }
-
-                // 强度变化
-                if (data.intensity_change && intensityChange) {
-                    intensityChange.textContent = data.intensity_change;
-                    if (data.intensity_class) {
-                        intensityChange.className = 'intensity-change ' + data.intensity_class;
-                    }
-                    if (intensitySection) intensitySection.style.display = 'block';
-                }
-
-                // 关键节点
-                if (keyNodes.length > 0 && keyNodesSection && keyNodesList) {
-                    keyNodesSection.style.display = 'block';
-                    keyNodesList.innerHTML = '';
-                    keyNodes.forEach(function (n) {
-                        var d = document.createElement('div');
-                        d.className = 'key-node-item';
-                        d.innerHTML = '<span class="key-node-dot">🔍</span><span class="key-node-text">' + n + '</span>';
-                        keyNodesList.appendChild(d);
-                    });
-                }
-
-                // 归因（取最后一条）
-                var lastAttr = '';
-                if (data.key_nodes && data.key_nodes.length > 0) {
-                    lastAttr = data.key_nodes[data.key_nodes.length - 1];
-                }
-                if (lastAttr && attributionSection && attributionText) {
-                    attributionSection.style.display = 'block';
-                    attributionText.textContent = lastAttr;
-                }
-
-                // 绘图
-                drawEmotionCurve();
-                savePanelState();
-            });
-    }
 
     // ── 月度总结主动推送 ──
     function checkMonthlyNotifications() {
