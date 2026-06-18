@@ -2,6 +2,14 @@
 (function () {
     'use strict';
 
+    var EMOTION_NAMES = {
+        '焦虑': '😰', '压力': '😣', '委屈': '🥺', '愤怒': '😠',
+        '沮丧': '😞', '无力': '😩', '失落': '😿', '不安': '😥',
+        '悲伤': '😢', '自我怀疑': '🤨', '烦躁': '😤', '恐惧': '😨',
+        '困惑': '🤔', '开心': '😊', '放松': '😌', '觉察': '💡',
+        '思考': '🧐', '自豪': '🎉',
+    };
+
     // ── 主入口 ──
     function loadV2() {
         var container = document.querySelector('.insights-container');
@@ -124,119 +132,98 @@
         initInsightCalendar();
     }
 
-    // ── 气泡图（大自然色系，集中簇状布局）──
-    var NATURE_COLORS = [
-        '#A8D5BA', '#7EC8E3', '#F5E6A3', '#C8E6C9',
-        '#B3D9F2', '#FFF3B0', '#A5D6A7', '#90CAF9',
-        '#FFE082', '#81C784',
-    ];
-
+    // ── 气泡图（纯 Canvas）──
     function drawBubbleChart(cloudData) {
         var canvas = document.getElementById('emotionCloudCanvas');
         if (!canvas) return;
+
+        var bubbles = (cloudData && cloudData.bubbles) || [];
+        if (!bubbles.length) {
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#B0A090';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('暂无数据', canvas.width / 2, canvas.height / 2);
+            return;
+        }
 
         var ctx = canvas.getContext('2d');
         var w = canvas.width;
         var h = canvas.height;
 
-        // 1. 背景渐变（柔和暖光）
-        var grad = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.6);
-        grad.addColorStop(0, '#FDF8F0');
-        grad.addColorStop(1, '#F5F0E8');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
+        ctx.clearRect(0, 0, w, h);
 
-        var bubbles = (cloudData && cloudData.bubbles) || [];
-        if (!bubbles.length) {
-            ctx.fillStyle = '#C0B0A0';
-            ctx.font = '14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('暂无数据', w / 2, h / 2);
-            return;
+        // 分两组：negative 偏左，positive 偏右
+        var negBubbles = bubbles.filter(function (b) { return b.group === 'negative'; });
+        var posBubbles = bubbles.filter(function (b) { return b.group !== 'negative'; });
+
+        // 计算布局：negative 在左半区，positive 在右半区
+        var centerX = w / 2;
+        var centerY = h / 2;
+        var maxR = 45;
+
+        // 在左右半区均匀分布
+        function layoutBubbles(bubbleList, xCenter, xSpread) {
+            var total = bubbleList.length;
+            if (total === 0) return;
+            var cols = Math.ceil(Math.sqrt(total));
+            var rows = Math.ceil(total / cols);
+            var spacingX = xSpread / Math.max(cols, 1);
+            var spacingY = (h - 40) / Math.max(rows, 1);
+
+            bubbleList.forEach(function (b, i) {
+                var col = i % cols;
+                var row = Math.floor(i / cols);
+                var r = Math.max(15, b.size * maxR);
+                var x = xCenter - xSpread / 2 + spacingX * col + spacingX / 2;
+                var y = 20 + spacingY * row + spacingY / 2;
+
+                // 绘制气泡
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fillStyle = b.color + '60'; // 半透明
+                ctx.fill();
+                ctx.strokeStyle = b.color;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // 情绪名（温和棕色）
+                ctx.fillStyle = '#5D4E37';
+                ctx.font = Math.max(10, r * 0.5) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(b.emotion, x, y - 6);
+
+                // emoji
+                var emoji = EMOTION_NAMES[b.emotion] || '';
+                if (emoji) {
+                    ctx.font = Math.max(12, r * 0.45) + 'px sans-serif';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(emoji, x, y + r + 6);
+                }
+            });
         }
 
-        // 2. 按频率排序
-        var sorted = bubbles.slice().sort(function (a, b) { return b.size - a.size; });
+        layoutBubbles(negBubbles, w * 0.3, w * 0.45);
+        layoutBubbles(posBubbles, w * 0.7, w * 0.45);
 
-        var maxR = 34;
-        var minR = 16;
-
-        // 3. 绘制：从中心向外围散开，螺旋/同心圈布局
-        var cx = w / 2;
-        var cy = h / 2 - 4;
-
-        // 第一个（最高频）放正中微上
-        var b0 = sorted[0];
-        var r0 = Math.max(minR, Math.min(maxR, b0.size * maxR));
-        drawBubble(ctx, b0, cx, cy, r0);
-
-        // 其余绕中心环状散布，每层角度偏移
-        for (var i = 1; i < sorted.length; i++) {
-            var b = sorted[i];
-            var r = Math.max(minR, Math.min(maxR - 4, b.size * (maxR - 4)));
-
-            // 角度：利用素数是好用的黄金角度近似，每圈均匀分布
-            var angle = i * 2.4;  // 黄金角近似
-            // 半径随圈数递增：近的密，远的稀
-            var ring = Math.floor((i - 1) / 5) + 1;
-            var dist = (r + r0) * 0.6 + (ring - 1) * (maxR + minR) * 0.5;
-
-            var bx = cx + Math.cos(angle) * dist;
-            var by = cy + Math.sin(angle) * dist * 0.7;  // 垂直压缩，更集中
-
-            // 边界约束
-            bx = Math.max(r + 2, Math.min(w - r - 2, bx));
-            by = Math.max(r + 2, Math.min(h - r - 2, by));
-
-            drawBubble(ctx, b, bx, by, r);
-        }
-
-        // 4. 零星装饰小点（营造「漂浮」感）
-        ctx.globalAlpha = 0.15;
-        for (var d = 0; d < 12; d++) {
-            var dx = 20 + (d * 31) % (w - 40);
-            var dy = 10 + (d * 17) % (h - 20);
-            var dr = 2 + (d % 4);
-            ctx.beginPath();
-            ctx.arc(dx, dy, dr, 0, Math.PI * 2);
-            ctx.fillStyle = NATURE_COLORS[d % NATURE_COLORS.length];
-            ctx.fill();
-        }
-        ctx.globalAlpha = 1.0;
-    }
-
-    function drawBubble(ctx, b, x, y, r) {
-        var colorIdx = (b.emotion.length + Math.round(r)) % NATURE_COLORS.length;
-        var baseColor = NATURE_COLORS[colorIdx];
-
-        // 阴影
-        ctx.beginPath();
-        ctx.arc(x + 1, y + 2, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.04)';
-        ctx.fill();
-
-        // 气泡主体（半透明）
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = baseColor + '99';
-        ctx.fill();
-        ctx.strokeStyle = baseColor;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        // 高光
-        ctx.beginPath();
-        ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.35, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.fill();
-
-        // 情绪文字（深棕加粗）
-        ctx.fillStyle = '#3D3028';
-        var fontSize = Math.max(10, Math.min(15, r * 0.55));
-        ctx.font = 'bold ' + fontSize + 'px sans-serif';
+        // 分隔标签
+        ctx.fillStyle = '#B8A898';
+        ctx.font = '11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(b.emotion, x, y - 1);
+        ctx.textBaseline = 'top';
+        ctx.fillText('负面', w * 0.2, h - 16);
+        ctx.fillText('正面', w * 0.8, h - 16);
+
+        // 中间的柔和分隔线
+        ctx.beginPath();
+        ctx.strokeStyle = '#D8D0C8';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(w / 2, 10);
+        ctx.lineTo(w / 2, h - 20);
+        ctx.stroke();
+        ctx.setLineDash([]);
     }
 
     // ── 日历 ──
