@@ -287,7 +287,7 @@ def _build_emotion_cloud(emotion_freq: dict) -> dict:
     for emotion, count in sorted(emotion_freq.items(), key=lambda x: -x[1]):
         size = round(count / max_count, 2)
         group = "negative" if emotion in negative_set else "positive"
-        color = EMOTION_COLORS.get(emotion, "#888")
+        color = EMOTION_COLORS.get(emotion, "#A8D5BA")
         bubbles.append({
             "emotion": emotion,
             "size": max(size, 0.2),  # 最小0.2，太小看不见

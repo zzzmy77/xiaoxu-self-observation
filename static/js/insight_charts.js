@@ -185,16 +185,24 @@
                 var x = xCenter - xSpread / 2 + spacingX * col + spacingX / 2;
                 var y = 20 + spacingY * row + spacingY / 2;
 
-                // 绘制气泡（径向渐变，半透明大自然色）
+                // 绘制气泡（径向渐变，rgba 避免 hex 格式问题）
+                function _hexToRgba(hex, a) {
+                    var h = hex.replace('#', '');
+                    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+                    var r = parseInt(h.slice(0,2), 16);
+                    var g = parseInt(h.slice(2,4), 16);
+                    var b = parseInt(h.slice(4,6), 16);
+                    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+                }
                 var grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 2, x, y, r);
-                grad.addColorStop(0, b.color + 'CC');
-                grad.addColorStop(0.7, b.color + '88');
-                grad.addColorStop(1, b.color + '55');
+                grad.addColorStop(0, _hexToRgba(b.color, 0.8));
+                grad.addColorStop(0.7, _hexToRgba(b.color, 0.53));
+                grad.addColorStop(1, _hexToRgba(b.color, 0.33));
                 ctx.beginPath();
                 ctx.arc(x, y, r, 0, Math.PI * 2);
                 ctx.fillStyle = grad;
                 ctx.fill();
-                ctx.strokeStyle = b.color + '99';
+                ctx.strokeStyle = _hexToRgba(b.color, 0.6);
                 ctx.lineWidth = 1.2;
                 ctx.stroke();
 
