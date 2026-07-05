@@ -26,7 +26,7 @@
 | 📊 **结构化解构** | 每次回复自动提取 emotion_tags / attribution / insight_draft |
 | 📖 **自动生成日记** | 对话结束后，AI 自动生成结构化日记（情绪+事件+归因+反思） |
 | 🔍 **跨会话洞察** | 跨越多次对话识别情绪模式和归因趋势 |
-| 📈 **成长周期报告** | 每 30 天自动生成一份成长总结（情绪分布+归因分布+成长时间线） |
+| 📈 **自我洞察** | 每天自动生成一份对自己思考和行为的洞察, 丰富模式识别和人格形象 |
 | 👂 **双模式切换** | 探索模式（引导型） vs 倾听模式（纯陪伴），覆盖不同场景 |
 | 👁 **AI 透明性** | 对话界面实时展示 AI 当前"看到"的情绪、归因和阶段 |
 | 🧠 **人物认知模型** | 10维度记忆系统，每次对话都在构建关于用户的深度理解 |
@@ -145,32 +145,9 @@ python app.py
 
 ---
 
-## 🧪 测试
-
-```bash
-# 全部测试
-python -m unittest tests.test_api tests.test_seeded_levels -v
-
-# 仅 Seed Factory 测试（无需 API Key）
-python -m unittest tests.test_seeded_levels.TestSeedFactory -v
-
-# 多轮对话质量测试（需 API Key）
-DEEPSEEK_API_KEY=*** python -m unittest tests.test_seeded_levels.TestMultiTurnStoryQuality -v
-
-# 远程部署测试
-RAILWAY_URL=https://your-app.railway.app python tests/test_remote.py
-```
-
----
-
 ## 📊 产品文档
 
 完整的产品经理工作手册（含市场分析、竞品分析、用户测试设计、PRD、原型设计）：
 
 👉 [小绪·自我观察日记·产品经理完整手册](/小绪_自我观察日记_产品经理完整手册.docx)
 
----
-
-## 📄 许可
-
-MIT License
